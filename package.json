@@ -1,0 +1,38 @@
+{
+  "name": "verzh",
+  "version": "1.0.0",
+  "description": "Versioning tool for managing project versions and releases",
+  "dependencies": {
+    "commander": "^13.1.0",
+    "inquirer": "^12.6.3",
+    "typescript": "^5.8.3",
+    "zx": "^8.4.1"
+  },
+  "keywords": [
+    "verzh",
+    "bump",
+    "init"
+  ],
+  "homepage": "https://github.com/Tsunairo/verzh#readme",
+  "bugs": {
+    "url": "https://github.com/Tsunairo/verzh/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Tsunairo/verzh.git"
+  },
+  "license": "MIT",
+  "author": "muriminjiru@homail.com",
+  "type": "commonjs",
+  "main": "dist/cli.js",
+  "scripts": {
+    "test": "verzh",
+    "compile": "tsc --outDir dist"
+  },
+  "bin": {
+    "verzh": "dist/cli.js"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.15"
+  }
+}
