@@ -25,8 +25,9 @@ program
 program.command('bump')
   .description('Bump version')
   .option('-t, --type <type>', 'bump type (major, minor, patch, pre-release)')
+  .option('-f, --force', 'ignore confirmation prompts and force version creation')
   .action(async (options) => {
-    await bump(options.type);
+    await bump(options.type, options.force);
   });
 
   program.command('init')

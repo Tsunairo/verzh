@@ -19,12 +19,14 @@ let verzhConfig: VersionConfig = {
   remote: 'origin'
 };
 
-const pushVersion = async () => {
-  let pushChanges = true;
+const pushVersion = async (force?: boolean) => {
+  let pushChanges =verzhConfig.autoPushToRemote;
   if (!verzhConfig.autoPushToRemote) {
-    const pushInput = await prompt(`\nPush new version ${verzhConfig.current}?`, [{name: 'Yes', value: 'yes'}, {name: 'No', value: 'no'}]);
-    if (pushInput.toLowerCase() === "no") {
-      pushChanges = false;
+    if(!force) {
+      const pushInput = await prompt(`\nPush new version ${verzhConfig.current}?`, [{name: 'Yes', value: 'yes'}, {name: 'No', value: 'no'}]);
+      if (pushInput.toLowerCase() === "no") {
+        pushChanges = false;
+      }
     }
   }
   if (pushChanges) {
@@ -49,15 +51,17 @@ const pushVersion = async () => {
   }
 };
 
-const createVersion = async (newVersion: string): Promise<void> => {
-  if (await hasUncommittedChanges()) {
-    const proceed = await prompt(
-      chalk.yellow('\nThere are uncommitted changes in your working directory. Proceed anyway? '), [{name: 'Yes', value: 'yes'}, {name: 'No', value: 'no'}]
-    );
-    
-    if (proceed.toLowerCase() !== 'yes') {
-      echo(chalk.yellowBright('Version creation cancelled. Please commit or stash your changes first.'));
-      process.exit(1);
+const createVersion = async (newVersion: string, force?: boolean): Promise<void> => {
+  if(!force) {
+    if (await hasUncommittedChanges()) {
+      const proceed = await prompt(
+        chalk.yellow('\nThere are uncommitted changes in your working directory. Proceed anyway? '), [{name: 'Yes', value: 'yes'}, {name: 'No', value: 'no'}]
+      );
+      
+      if (proceed.toLowerCase() !== 'yes') {
+        echo(chalk.yellowBright('Version creation cancelled. Please commit or stash your changes first.'));
+        process.exit(1);
+      }
     }
   }
   if(verzhConfig.updatePackageJson) {
@@ -92,10 +96,10 @@ const createVersion = async (newVersion: string): Promise<void> => {
     return;
   }
   echo(chalk.greenBright(`Version ${newVersion} created 👍✅!`));
-  await pushVersion();
+  await pushVersion(force);
 };
 
-const bump = async (type?: string): Promise<void> => {
+const bump = async (type?: string, force?: boolean): Promise<void> => {
   // Update config reading:
   try {
     verzhConfig = JSON.parse(fs.readFileSync(verConfigPath, 'utf8'));
@@ -179,12 +183,17 @@ const bump = async (type?: string): Promise<void> => {
       process.exit(1);
     }
     
-    const pushNewVersionInput = await prompt(`\nCreate new version: ${newVersion} ?`, [{name: 'Yes', value: 'yes'}, {name: 'No', value: 'no'}]);
-    if (pushNewVersionInput.toLowerCase() === "yes") {
-      await createVersion(newVersion);
-    } else {
-      echo(chalk.redBright("Version not pushed"));
-      process.exit(0);
+    if(force) {
+      await createVersion(newVersion, force); // Force version creation without confirmation
+    }
+    else {
+      const pushNewVersionInput = await prompt(`\nCreate new version: ${newVersion} ?`, [{name: 'Yes', value: 'yes'}, {name: 'No', value: 'no'}]);
+      if (pushNewVersionInput.toLowerCase() === "yes") {
+        await createVersion(newVersion, force); // Force version creation without confirmation);
+      } else {
+        echo(chalk.redBright("Version not pushed"));
+        process.exit(0);
+      }
     }
   }
   catch(error) {

@@ -1,6 +1,6 @@
 {
-  "current": "1.0.2",
-  "precededBy": "1.0.1",
+  "current": "1.0.3",
+  "precededBy": "1.0.2",
   "releaseBranch": "main",
   "preReleaseBranches": {},
   "autoPushToRemote": true,
