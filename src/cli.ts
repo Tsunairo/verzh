@@ -5,13 +5,18 @@ import { init, bump } from './commands';
 import * as fs from 'fs'
 
 
-const program = new Command();
 
 const version = JSON.parse(fs.readFileSync('./package.json', 'utf8')).version;
-const banner = fs.readFileSync('./src/banner.txt', 'utf8').replace('{{version}}', version);
+const banner = `
+                                      
+// Version: ${version}
+// Versioning tool for managing project versions and releases
+
+`;
 
 console.log(banner);
 
+const program = new Command();
 program
   .name('ver')
   .version(version)

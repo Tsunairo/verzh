@@ -5,7 +5,6 @@
 ## Features
 
 - Bump version numbers (major, minor, patch, pre-release)
-- Automatically update `ver.config.json` with the new version
 - Create annotated git tags for each release
 - Push changes and tags to your remote repository
 - Interactive prompts to confirm actions and handle uncommitted changes
@@ -15,23 +14,31 @@
 Clone this repository and install dependencies:
 
 ```sh
-git clone <repo-url>
-cd ver
-npm install
+npm install -g verzh
 ```
+
+## Commands
+
+| Command             | Description                                     |
+| ------------------- | ----------------------------------------------- |
+| `verzh init`        | Initialize config and setup                     |
+| `verzh bump [type]` | Bump version by type: `patch`, `minor`, `major` |
+<!-- | `verzh set <x.y.z>` | Set version manually                            | -->
+<!-- | `verzh version`     | Display current version                         | -->
+<!-- | `verzh changelog`   | (Optional) Generate changelog entry             | -->
 
 ## Usage
 
-Run the CLI to bump your project's version:
+Initialize a new project:
 
 ```sh
 npx zx src/cli.ts bump [major|minor|patch]
 ```
 
-Or, if you have it set up as an npm script:
+Bump version:
 
 ```sh
-npm run bump -- [major|minor|patch]
+verzh bump
 ```
 
 You will be prompted to confirm version creation and pushing to remote. The tool will handle git commits, tags, and pushes for you.
@@ -45,9 +52,13 @@ Edit `ver.config.json` to set your release branch, remote, and other options. Ex
   "current": "1.0.0",
   "precededBy": "",
   "releaseBranch": "main",
-  "preReleaseBranches": {},
+  "preReleaseBranches": {
+    "develop": "alpha",
+    "feature": "beta",
+    "hotfix": "rc"
+  },
   "autoPushToRemote": false,
-  "pushedToRemote": [],
+  "updatePackageJson": false,
   "remote": "origin"
 }
 ```
