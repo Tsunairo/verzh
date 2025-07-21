@@ -1,6 +1,6 @@
 {
   "name": "verzh",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "Versioning tool for managing project versions and releases",
   "dependencies": {
     "commander": "^13.1.0",
