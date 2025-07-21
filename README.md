@@ -22,7 +22,7 @@ npm install -g verzh
 | Command             | Description                                     |
 | ------------------- | ----------------------------------------------- |
 | `verzh init`        | Initialize config and setup                     |
-| `verzh bump [type]` | Bump version by type: `patch`, `minor`, `major` |
+| `verzh bump -t [type] -f` | Bump version by type: `patch`, `minor`, `major` |
 <!-- | `verzh set <x.y.z>` | Set version manually                            | -->
 | `verzh version`     | Display current version                         |
 <!-- | `verzh changelog`   | (Optional) Generate changelog entry             | -->

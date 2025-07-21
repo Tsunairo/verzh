@@ -3,16 +3,12 @@
 import { Command } from 'commander';
 import { init, bump } from './commands';
 import * as fs from 'fs'
+const path = require('path');
 
 
 
-const version = JSON.parse(fs.readFileSync('./package.json', 'utf8')).version;
-const banner = `
-                                      
-// Version: ${version}
-// Versioning tool for managing project versions and releases
-
-`;
+const version = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf8')).version;
+const banner = fs.readFileSync('./src/banner.txt', 'utf8').replace('{{version}}', version);
 
 console.log(banner);
 
