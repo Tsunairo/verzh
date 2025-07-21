@@ -7,8 +7,8 @@ const path = require('path');
 
 
 
-const version = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf8')).version;
-const banner = fs.readFileSync('./src/banner.txt', 'utf8').replace('{{version}}', version);
+const version = JSON.parse(fs.readFileSync(path.join(__dirname, 'verzh.config.json'), 'utf8')).version;
+const banner = fs.readFileSync(path.join(__dirname, 'banner.txt'), 'utf8').replace('{{version}}', version);
 
 console.log(banner);
 
