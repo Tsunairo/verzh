@@ -24,7 +24,19 @@ Or install globally:
   verzh [command]
 ```
 
-⚠️ On Windows, if verzh is not recognized after global install, ensure your npm global bin directory is in your system PATH.
+⚠️ Windows users: If verzh isn’t recognized after global install, it’s likely because your global npm binaries aren’t in your system PATH. To fix that:
+
+Go to Environment Variables via your Start menu.
+
+Edit the User or System Path.
+
+Add:
+
+```shell
+%APPDATA%\npm
+```
+
+Restart your terminal or system.
 
 ## Commands
 
@@ -32,7 +44,7 @@ Or install globally:
 | ------------------- | ----------------------------------------------- |
 | `verzh init`        | Initialize config and setup                     |
 | `verzh bump -t [type] -f` | [-t, --type]: `patch`, `minor`, `major`, `pre-release` [-f, --force]: run without user inputs |
-| `verzh version`     | Display current version                         |
+| `verzh current`     | Display current version                         |
 
 Initialize a new project:
 
@@ -69,6 +81,8 @@ Edit `verzh.config.json` to set your release branch, remote, and other options. 
   "remote": "origin"
 }
 ```
+
+For `preReleaseBranches` the key is the branch name and value is the name of the pre-release. This will create tags like `1.0.2-alpa.24`
 
 ## License
 
