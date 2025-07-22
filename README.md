@@ -9,43 +9,50 @@
 - Push changes and tags to your remote repository
 - Interactive prompts to confirm actions and handle uncommitted changes
 
-## Installation
+## 🔧 Usage
 
-Clone this repository and install dependencies:
+Run verzh without installing it globally:
 
-```sh
-npm install -g verzh
+```bash
+  npx verzh [command]
 ```
+
+Or install globally:
+
+```bash
+  npm install -g verzh
+  verzh [command]
+```
+
+⚠️ On Windows, if verzh is not recognized after global install, ensure your npm global bin directory is in your system PATH.
 
 ## Commands
 
 | Command             | Description                                     |
 | ------------------- | ----------------------------------------------- |
 | `verzh init`        | Initialize config and setup                     |
-| `verzh bump -t [type] -f` | Bump version by type: `patch`, `minor`, `major` |
-<!-- | `verzh set <x.y.z>` | Set version manually                            | -->
+| `verzh bump -t [type] -f` | [-t, --type]: `patch`, `minor`, `major`, `pre-release` [-f, --force]: run without user inputs |
 | `verzh version`     | Display current version                         |
-<!-- | `verzh changelog`   | (Optional) Generate changelog entry             | -->
-
-## Usage
 
 Initialize a new project:
 
 ```sh
-npx zx src/cli.ts bump [major|minor|patch]
+verzh init
 ```
+Set's up the configuration file that determines the workflow of this script.
+
 
 Bump version:
 
 ```sh
-verzh bump
+verzh bump -t patch
 ```
 
-You will be prompted to confirm version creation and pushing to remote. The tool will handle git commits, tags, and pushes for you.
+If `--type` | `-t` option is not set, the script checks the branch and applies `PATCH` bump for release branch and `PRE-RELEASE` bump for pre-relase branches. Using the `--force` | `-f` option runs the script without any user input.
 
 ## Configuration
 
-Edit `ver.config.json` to set your release branch, remote, and other options. Example:
+Edit `verzh.config.json` to set your release branch, remote, and other options. Example:
 
 ```json
 {
