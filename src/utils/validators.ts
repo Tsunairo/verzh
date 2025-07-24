@@ -3,6 +3,36 @@
 import { $ } from 'zx';
 import { ValidationResponse, VersionConfig } from './types';
 
+export const doesTagExist = async (tag: string) => {
+  try {
+    await $`git rev-parse refs/tags/${tag}`;
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+export const validateTag = async (tag: string) => {
+  if(tag) {
+    const semverRegex = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/;
+    if (!semverRegex.test(tag)) {
+      return {
+        isValid: false,
+        message: 'Tag is not a valid format. Valid formats include 1.0.2 or 1.0.2-beta.3'
+      };
+    }
+  }
+  else {
+    return {
+      isValid: false,
+      message: 'Tag not defined'
+    };
+  }
+  return {
+    isValid: true
+  };
+};
+
 export const validateInitBranch = async (branch: string): Promise<ValidationResponse> => {
   if (!branch) {
     return {
@@ -52,14 +82,52 @@ export const validateInitPreReleaseName = (name: string, otherNames: string[]): 
     isValid: true
   };
 };
-
-export const validateBumpBranchAndType = (branch: string, type: string, verConfig: VersionConfig): ValidationResponse => {
-  const validBranches = [verConfig.releaseBranch, ...Object.values(verConfig.preReleaseBranches)]
+export const validateBranch = (branch: string, config: VersionConfig) => {
+  const validBranches = [config.releaseBranch, ...Object.values(config.preReleaseBranches)]
   if(!validBranches.includes(branch)) {
     return {
       isValid: false,
       message: `Branch ${branch} is not a branch for bumping. Valid branches is: [${validBranches.join(", ")}]`
     };
+  }
+  return {
+    isValid: true
+  };
+};
+
+export const validateBranchAndTag = async (branch: string, tag: string, config: VersionConfig) => {
+  const validateBranchResponse = validateBranch(branch, config);
+  if(validateBranchResponse.isValid) {
+    const validateTagResponse= await validateTag(tag);
+    if(validateTagResponse.isValid) {
+      const tagSections = tag.split("-");
+      if(tagSections.length === 1 && config.preReleaseBranches[branch]) {
+        return {
+          isValid: false,
+          message: 'Tag cannot be used in pre-release branch'
+        }
+      }
+      else if(tagSections.length > 1 && config.releaseBranch) {
+        return {
+          isValid: false,
+          message: 'Tag cannot be used in release branch'
+        }
+      }
+      return {
+        isValid: true
+      };
+    }
+    return validateTagResponse;
+  }
+  else {
+    return validateBranchResponse;
+  }
+}
+
+export const validateBumpBranchAndType = (branch: string, type: string, verConfig: VersionConfig): ValidationResponse => {
+  const validateBranchResponse = validateBranch(branch, verConfig);
+  if(!validateBranchResponse.isValid) {
+    return validateBranchResponse;
   }
   else {
     if (!['MAJOR', 'MINOR', 'PATCH', 'PRE-RELEASE'].includes(type)) {
@@ -168,3 +236,12 @@ export const validateRemote = async (remote: string) => {
     return { isValid: false, message: `Remote "${remote}" does not exist.` };
   }
 };
+
+export async function remoteExists(remoteName: string) {
+  try {
+    await $`git remote get-url ${remoteName}`;
+    return true;
+  } catch {
+    return false;
+  }
+}

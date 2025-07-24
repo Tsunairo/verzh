@@ -28,3 +28,9 @@ export interface GitCommandOutput {
   stderr: string;    // Error output
   exitCode: number;  // 0 for success, non-zero for failure
 }
+
+export type PromptType = 'input' | 'select' | 'confirm' | 'search';
+
+export type PromptChoices = {name: string, value: string}[];
+
+export type PromptSource = (term: string | undefined) => Promise<PromptChoices>;

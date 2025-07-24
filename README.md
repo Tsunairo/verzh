@@ -48,10 +48,11 @@ Restart your terminal or system.
 
 Initialize a new project:
 
+Set's up the configuration file that determines the workflow of this script.
+`Note` this will first 
 ```sh
 verzh init
 ```
-Set's up the configuration file that determines the workflow of this script.
 
 
 Bump version:
