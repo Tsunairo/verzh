@@ -3,7 +3,7 @@
 import { chalk, echo, spinner, fs, $ } from 'zx';
 import { VersionConfig } from '../utils/types';
 import { doesTagExist, validateBranchAndTag, validateBumpBranchAndType } from '../utils/validators';
-import { handleError, hasUncommittedChanges, loadConfig, prompt, pullLastest } from '../utils/helpers';
+import { handleError, hasUncommittedChanges, loadConfig, prompt, pullLatest } from '../utils/helpers';
 import push from './push';
 
 $.verbose = false
@@ -44,7 +44,7 @@ const createVersion = async (tag: string, force?: boolean): Promise<void> => {
         chalk.yellow('\nThere are uncommitted changes in your working directory. Proceed anyway? '), 'confirm'
       );
       
-      if (proceed) {
+      if (!proceed) {
         echo(chalk.yellowBright('Version creation cancelled. Please commit or stash your changes first.'));
         process.exit(1);
       }
@@ -104,7 +104,7 @@ const set = async (tag: string, force?: boolean, isBranchAndTagValidated?: boole
       }
     }
     if(!isPulled) {
-      await pullLastest();
+      await pullLatest();
     }
     
     if(force) {

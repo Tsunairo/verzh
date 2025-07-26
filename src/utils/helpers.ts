@@ -37,18 +37,23 @@ export const isPushSuccessful = async (commitHash: string): Promise<boolean> => 
 export async function fetchGitBranches(): Promise<string[]> {
   try {
     // Make sure to fetch latest branches
-    await $`git fetch --all --prune`;
+    const remotes = await fetchGitRemotes();
+    if (remotes.length > 0) {
+      await $`git fetch --all --prune`;
+    }
 
-    const result = await $`git branch -r`; // List remote branches
+    const result = await $`git branch`; // local branches
+
     return result.stdout
       .split('\n')
-      .map(line => line.trim())
-      .filter(branch => !!branch && !branch.includes('->')); // Remove symbolic refs
+      .map(line => line.trim().replace(/^\*\s*/, '')) // remove leading '* ' if present
+      .filter(branch => !!branch && !branch.includes('->')); // clean result
   } catch (err) {
     console.error('❌ Failed to fetch branches:', err);
     return [];
   }
 }
+
 
 export async function fetchGitRemotes(): Promise<string[]> {
   try {
@@ -63,7 +68,7 @@ export async function fetchGitRemotes(): Promise<string[]> {
   }
 }
 
-export const prompt = async (message: string, type?: PromptType, choices?: PromptChoices, source?: PromptSource): Promise<string | boolean> => {
+export const prompt = async (message: string, type?: PromptType, choices?: PromptChoices, source?: PromptSource) => {
   
   switch(type) {
     case 'confirm':
@@ -82,16 +87,19 @@ export const prompt = async (message: string, type?: PromptType, choices?: Promp
   }
 };
 
-export const pullLastest = async () => {
-  await spinner('Pulling...', async () => {
-    try {
-      await $`git pull`;
-    }
-    catch (error) {
-      handleError(error as Error, "Pulling Changes");
-      process.exit(1);
-    }
-  });
+export const pullLatest = async () => {
+  const remotes = await fetchGitRemotes();
+  if (remotes.length > 0) {
+    await spinner('Pulling...', async () => {
+      try {
+        await $`git pull`;
+      }
+      catch (error) {
+        handleError(error as Error, "Pulling Changes");
+        process.exit(1);
+      }
+    });
+  }
 };
 
 export const loadConfig = async(configPath: string) => {

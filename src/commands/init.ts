@@ -3,14 +3,14 @@
 import { chalk, echo, question, spinner, fs, argv, $ } from 'zx';
 import { PromptChoices, PromptSource, PromptType, VersionConfig } from '../utils/types';
 import { doesTagExist, isGitRepository, validateTag, validateInitBranch, validateInitPreReleaseName, validateRemote } from '../utils/validators';
-import { fetchGitBranches, fetchGitRemotes, prompt, pullLastest } from '../utils/helpers';
+import { fetchGitBranches, fetchGitRemotes, prompt, pullLatest } from '../utils/helpers';
 import set from './set';
 
 
 type Question<T> = {
   name: string;
   message: string;
-  type: PromptType,
+  type: PromptType | 'custom';
   choices?: PromptChoices;
   source?: PromptSource;
   required: boolean;
@@ -30,24 +30,40 @@ const config: VersionConfig = {
   remote: '',
 };
 
-const multiStep = async () => {
+const preReleasesPrompt = async (): Promise<Map<string, string>> => {
   const preReleaseConfirm = await prompt("Create pre-releases?", 'confirm');
+  let preReleases: Map<string, string> = new Map();
   if(preReleaseConfirm) {
-    let preReleases = {};
-    const branches = await fetchGitBranches();
+    const branches = (await fetchGitBranches()).filter(branch => branch !== config.releaseBranch && !Object.keys(config.preReleaseBranches).includes(branch));
     do {
       const preReleaseBranch =  await prompt("Select a branch", 'search', undefined, async (input) => {
-        return branches.map(branch => ({
+        input = typeof input === 'string' ? input.trim() : '';
+        const availableBranches = branches.filter(branch => !Object.keys(preReleases).includes(branch) && branch.includes(input));
+        return ['<Exit>', ...availableBranches].map(branch => ({
           name: branch,
           value: branch
         }));
       });
-      const preReleaseName =  await prompt("Enter pre-release name", 'input');
-      preReleases = {...preReleases, [preReleaseBranch + '']: preReleaseName}
+      if(preReleaseBranch === '<Exit>') {
+        break;
+      }
+      let preReleaseName =  await prompt("Enter pre-release name", 'input');
+      preReleaseName = typeof preReleaseName === 'string' ? preReleaseName.trim() : '';
+
+      const validatePreReleaseNameResponse = validateInitPreReleaseName(preReleaseName, Object.values(preReleases));
+      if (!validatePreReleaseNameResponse.isValid) {
+        echo(chalk.redBright(validatePreReleaseNameResponse.message));
+        continue;
+      }
+      preReleases = {...preReleases, [preReleaseBranch + '']: preReleaseName};
+      const confirmResponse = await prompt("Add another pre-release branch?", 'confirm');
+      if(!confirmResponse) {
+        break;
+      }
     }
-    while(true)
-    
-  } 
+    while(branches.length > 0);
+  }
+  return preReleases;
 }
 
 const projectNameQuestion: Question<string> = {
@@ -118,40 +134,35 @@ const preReleaseBranchesQuestion: Question<Map<string, string>> = {
   name: 'preReleaseBranches',
   message: 'Pre-release branches - comma-separated, e.g., development:dev,staging:staging',
   default: {},
-  type: 'input',
+  type: 'custom',
   required: false,
   answer: (input) => {
-    const branchesMap = new Map<string, string>();
-    input.split(',').forEach(branch => {
-      const [branchName, releaseName] = branch.split(':');
-      branchesMap.set(branchName.trim(), releaseName.trim());
-    });
-    return branchesMap;
+    return input;
   },
   validate: async (answer) => {
-    answer = typeof answer === 'string' ? answer.trim() : '';
-    const branchAndPrNames = answer.split(',').map(b => b.trim());
-    for (const branch of branchAndPrNames) {
-      if (!branch.includes(':')) {
-        return `Invalid format for branch: ${branch}. Use branch:release-name format.`;
-      }
+    // answer = typeof answer === 'string' ? answer.trim() : '';
+    // const branchAndPrNames = answer.split(',').map(b => b.trim());
+    // for (const branch of branchAndPrNames) {
+    //   if (!branch.includes(':')) {
+    //     return `Invalid format for branch: ${branch}. Use branch:release-name format.`;
+    //   }
 
-      const [branchName, releaseName] = branch.split(':');
-      const validateBranchResponse = await validateInitBranch(branchName.trim());
-      const validatePreReleaseNameResponse = validateInitPreReleaseName(
-        releaseName.trim(),
-        branchAndPrNames.map(b => b.split(':')[1].trim())
-      );
+    //   const [branchName, releaseName] = branch.split(':');
+    //   const validateBranchResponse = await validateInitBranch(branchName.trim());
+    //   const validatePreReleaseNameResponse = validateInitPreReleaseName(
+    //     releaseName.trim(),
+    //     branchAndPrNames.map(b => b.split(':')[1].trim())
+    //   );
 
-      if (!validateBranchResponse.isValid) {
-        echo(chalk.redBright(validateBranchResponse.message));
-        return false;
-      }
-      if (!validatePreReleaseNameResponse.isValid) {
-        echo(chalk.redBright(validatePreReleaseNameResponse.message));
-        return false;
-      }
-    }
+    //   if (!validateBranchResponse.isValid) {
+    //     echo(chalk.redBright(validateBranchResponse.message));
+    //     return false;
+    //   }
+    //   if (!validatePreReleaseNameResponse.isValid) {
+    //     echo(chalk.redBright(validatePreReleaseNameResponse.message));
+    //     return false;
+    //   }
+    // }
     return true;
   }
 };
@@ -210,7 +221,7 @@ const updatePackageJsonQuestion: Question<boolean> = {
   answer: (input) => input
 };
 
-const questions = [
+const questions: Question<any>[] = [
   projectNameQuestion,
   currentVersionQuestion,
   releaseBranchQuestion,
@@ -221,10 +232,9 @@ const questions = [
 ];
 
 const init = async () => {
-  await pullLastest();
   if (fs.existsSync('verzh.config.json')) {
     const overwrite = await prompt('Configuration exists. Overwrite?', 'confirm');
-    if (overwrite) {
+    if (!overwrite) {
       echo(chalk.yellow('Initialization aborted.'));
       process.exit(0);
     }
@@ -233,15 +243,6 @@ const init = async () => {
     echo(chalk.redBright('This command must be run in a git repository.'));
     process.exit(1);
   }
-  const verzhConfig: VersionConfig = {
-    current: '1.0.0',
-    precededBy: '',
-    releaseBranch: '',
-    preReleaseBranches: {},
-    autoPushToRemote: false,
-    updatePackageJson: false,
-    remote: '',
-  };
 
   for (const q of questions) {
     if (q.preCondition && !(await q.preCondition())) {
@@ -250,7 +251,7 @@ const init = async () => {
     }
     let answer;
     do {
-      const response = await prompt(q.message, q.type, q.choices, q.source);
+      const response = q.type === 'custom' ? await preReleasesPrompt() : await prompt(q.message, q.type, q.choices, q.source);
       if(!response && !q.required) {
         answer = q.default;
       }
@@ -269,17 +270,17 @@ const init = async () => {
       }
       break;
     } while (true);
-    (verzhConfig as any)[q.name] = answer; // TODO: Create a proper type-safe solution
+    (config as any)[q.name] = answer; // TODO: Create a proper type-safe solution
   }
 
-  fs.writeFileSync('verzh.config.json', JSON.stringify(verzhConfig, null, 2));
+  fs.writeFileSync('verzh.config.json', JSON.stringify(config, null, 2));
   echo(chalk.greenBright('Version configuration initialized successfully.'));
 
-  const tagExists = await doesTagExist(verzhConfig.current);
-  if(tagExists) {
-    const setTagPrompt = await prompt(`Noticed version ${verzhConfig.current} does not exist. Create it?`, 'confirm');
+  const tagExists = await doesTagExist(config.current);
+  if(!tagExists) {
+    const setTagPrompt = await prompt(`Noticed version ${config.current} does not exist. Create it?`, 'confirm');
     if(setTagPrompt) {
-      await set(verzhConfig.current, false, true, true);
+      await set(config.current, false, true, true);
     }
   }
   else {

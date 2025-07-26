@@ -43,25 +43,69 @@ Restart your terminal or system.
 | Command             | Description                                     |
 | ------------------- | ----------------------------------------------- |
 | `verzh init`        | Initialize config and setup                     |
-| `verzh bump -t [type] -f` | [-t, --type]: `patch`, `minor`, `major`, `pre-release` [-f, --force]: run without user inputs |
-| `verzh current`     | Display current version                         |
+| `verzh bump -t [--type] -f [--force]` | increments the current version or creates a brand new version |
+| `verzh set -t [--tag] -f [--force]` | Applies a specified version and sets it as current |
+| `verzh push`     | Push an already created version |
+| `verzh current`     | Display current version |
+| `verzh preceded`     | Display preceded version |
 
-Initialize a new project:
+### Init
 
 Set's up the configuration file that determines the workflow of this script.
-`Note` this will first 
+
 ```sh
 verzh init
 ```
 
+### Bump version
 
-Bump version:
+- Bumps the version according to the specified type and creates a git tag. The script will prompt you to confirm the version bump and handle uncommitted changes.
+- If you want to specify the type of bump, use the `--type` | `-t` option. Available types are:
+  - `patch`
+  - `minor`
+  - `major`
+  - `pre-release`
+- If `--type` | `-t` option is not set, the script checks the branch and applies `PATCH` bump for release branch and `PRE-RELEASE` bump for pre-realase branches. 
+- If you want to skip the confirmation prompts, use the `--force` | `-f` option.
 
 ```sh
 verzh bump -t patch
 ```
 
-If `--type` | `-t` option is not set, the script checks the branch and applies `PATCH` bump for release branch and `PRE-RELEASE` bump for pre-relase branches. Using the `--force` | `-f` option runs the script without any user input.
+### Set version
+
+- Sets the version to the specified tag and creates a git tag. The script will prompt you to confirm the version change and handle uncommitted changes.
+- Specify the tag using the `--tag` | `-t` option.
+- If you want to skip the confirmation prompts, use the `--force` | `-f` option.
+
+```sh
+verzh set -t 1.0.0
+```
+
+### Push version
+
+- Push an already created tag to the remote repository.
+- If you want to skip the confirmation prompts, use the `--force` | `-f` option.
+
+```sh
+verzh push -t 1.0.0
+```
+
+### Current version
+
+- Displays the current version of the project based on the `verzh.config.json` file.
+
+```sh
+verzh current
+```
+
+### Preceded version
+
+- Displays the version that precedes the current version based on the `verzh.config.json` file.
+
+```sh
+verzh preceded
+```
 
 ## Configuration
 

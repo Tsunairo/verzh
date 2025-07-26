@@ -66,7 +66,7 @@ export const validateInitPreReleaseName = (name: string, otherNames: string[]): 
       message: 'Pre-release name cannot be empty.'
     };
   }
-  if (/^[a-zA-Z0-9._-]+$/.test(name)) {
+  if (!/^[a-zA-Z0-9._-]+$/.test(name)) {
     return {
       isValid: false,
       message: 'Pre-release name can only contain alphanumeric characters, dots, underscores, and hyphens.'

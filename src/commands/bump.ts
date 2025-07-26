@@ -73,10 +73,11 @@ const bump = async (type?: string, force?: boolean): Promise<void> => {
     if(!type && (config.releaseBranch === branch || config.preReleaseBranches[branch])) {
       type = config.preReleaseBranches[branch] ? "PRE_RELEASE" : "PATCH";
     }
-    else {
+    else if(!type) {
       handleError(new Error(`Bump type is required. Please specify a type.`), "Bump Type Validation");
       process.exit(1);
     }
+    type = type.toUpperCase();
     const validateBranchResponse = validateBumpBranchAndType(branch, type, config);
     if (!validateBranchResponse.isValid) {
       handleError(new Error(validateBranchResponse.message), "Bump Branch & Type Validation");

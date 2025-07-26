@@ -1,6 +1,6 @@
 {
   "name": "verzh",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "Versioning tool for managing project versions and releases",
   "dependencies": {
     "commander": "^13.1.0",
@@ -11,7 +11,11 @@
   "keywords": [
     "verzh",
     "bump",
-    "init"
+    "init",
+    "set",
+    "push",
+    "current",
+    "push"
   ],
   "homepage": "https://github.com/Tsunairo/verzh#readme",
   "bugs": {
@@ -28,14 +32,15 @@
   "scripts": {
     "test": "verzh",
     "compile": "tsc --outDir dist",
-    "copy-assets": "copyfiles verzh.config.json dist && copyfiles -u 1 src/banner.txt dist",
-    "build": "npm run compile && npm run copy-assets"
+    "build": "npm run compile && npm run clean",
+    "clean": "copyfiles verzh.config.json dist && copyfiles -u 1 src/banner.txt dist && rimraf src && rimraf .github && rimraf tsconfig.json"
   },
   "bin": {
     "verzh": "dist/cli.js"
   },
   "devDependencies": {
     "@types/node": "^24.0.15",
-    "copyfiles": "^2.4.1"
+    "copyfiles": "^2.4.1",
+    "rimraf": "^6.0.1"
   }
 }

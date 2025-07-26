@@ -31,7 +31,7 @@ const push = async (tag: string, force?: boolean) => {
   if (!config.autoPushToRemote) {
     if(!force) {
       const pushInput = await prompt(`\nPush version ${tag}?`, 'confirm');
-      if (pushInput) {
+      if (!pushInput) {
         pushChanges = false;
       }
     }
