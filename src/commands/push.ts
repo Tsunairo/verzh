@@ -22,8 +22,8 @@ let config: VersionConfig = {
 const push = async (tag: string, force?: boolean) => {
   config = await loadConfig(configPath);
   const tagExists = await doesTagExist(tag);
-  if(tagExists) {
-    handleError(new Error("Tag already exists"), "Tag Validation");
+  if(!tagExists) {
+    handleError(new Error("Tag does not exist exists"), "Tag Validation");
     process.exit(1);
   }
   
