@@ -2,7 +2,7 @@
 
 import { chalk, echo, spinner, fs, $ } from 'zx';
 import { VersionConfig } from '../utils/types';
-import { doesTagExist, validateConfig } from '../utils/validators';
+import { validateTagExists, validateConfig } from '../utils/validators';
 import { handleError, loadConfig, prompt } from '../utils/helpers';
 
 $.verbose = false
@@ -21,7 +21,7 @@ let config: VersionConfig = {
 
 const push = async (tag: string, force?: boolean) => {
   config = await loadConfig(configPath);
-  const tagExists = await doesTagExist(tag);
+  const tagExists = await validateTagExists(tag);
   if(!tagExists) {
     handleError(new Error("Tag does not exist exists"), "Tag Validation");
     process.exit(1);

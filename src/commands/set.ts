@@ -2,7 +2,7 @@
 
 import { chalk, echo, spinner, fs, $ } from 'zx';
 import { VersionConfig } from '../utils/types';
-import { doesTagExist, validateBranchAndTag, validateBumpBranchAndType } from '../utils/validators';
+import { validateTagExists, validateBranchAndTag, validateBumpBranchAndType } from '../utils/validators';
 import { handleError, hasUncommittedChanges, loadConfig, prompt, pullLatest } from '../utils/helpers';
 import push from './push';
 
@@ -96,7 +96,7 @@ const set = async (tag: string, force?: boolean, isBranchAndTagValidated?: boole
         process.exit(1);
       }
       else {
-        const tagExists = await doesTagExist(tag);
+        const tagExists = await validateTagExists(tag);
         if(tagExists) {
           handleError(new Error("Tag already exists"), "Tag Validation");
           process.exit(1);

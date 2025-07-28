@@ -1,11 +1,18 @@
 export interface VersionConfig {
+  name: string;
   current: string;
   precededBy: string;
   releaseBranch: string;
-  preReleaseBranches: { [key: string]: string };
+  preReleaseBranches: Record<string, string>;
   autoPushToRemote: boolean;
-  updatePackageJson?: boolean;
+  updatePackageJson: boolean;
   remote: string;
+}
+
+export type Question = {
+  name: keyof VersionConfig;
+  prompt: () => Promise<VersionConfig[keyof VersionConfig]>;
+  preCondition?: () => boolean | Promise<boolean>;
 }
 
 type VersionType = 'MAJOR' | 'MINOR' | 'PATCH' | 'PRE-RELEASE';

@@ -1,16 +1,19 @@
 #!/usr/bin/env zx
 
-import { spinner, $ } from 'zx';
-import { VersionConfig } from '../utils/types';
-import { validateBumpBranchAndType, validateConfig, validateVersion } from '../utils/validators';
-import { handleError, hasUncommittedChanges, loadConfig, prompt } from '../utils/helpers';
+import { spinner, $, fs } from 'zx';
+import { ValidationResponse, VersionConfig } from '../utils/types';
+import { validateCommandBranch, validateBumpType, validateConfig, validateGit, validateEnvironment } from '../utils/validators';
+import { handleError, pullLatest } from '../utils/helpers';
 import set from './set';
+import { select } from '@inquirer/prompts';
+
 
 $.verbose = false
 const configPath = "verzh.config.json";
 
 // Initialize with default values
 let config: VersionConfig = {
+  name: '',
   current: '1.0.0',
   precededBy: '',
   releaseBranch: 'main',
@@ -65,42 +68,46 @@ const createNewTag = (branch: string, type: string) => {
   return newTag;
 };
 
+
 const bump = async (type?: string, force?: boolean): Promise<void> => {
-  config = await loadConfig(configPath);
-  
   try {
-    let branch: string = (await $`git rev-parse --abbrev-ref HEAD`).stdout.trim();
-    if(!type && (config.releaseBranch === branch || config.preReleaseBranches[branch])) {
-      type = config.preReleaseBranches[branch] ? "PRE_RELEASE" : "PATCH";
-    }
-    else if(!type) {
-      handleError(new Error(`Bump type is required. Please specify a type.`), "Bump Type Validation");
-      process.exit(1);
-    }
-    type = type.toUpperCase();
-    const validateBranchResponse = validateBumpBranchAndType(branch, type, config);
-    if (!validateBranchResponse.isValid) {
-      handleError(new Error(validateBranchResponse.message), "Bump Branch & Type Validation");
-      process.exit(1);
-    }
-    await spinner('Pulling...', async () => {
-      try {
-        await $`git pull`;
+    config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    const validateEnvironmenntResponse = await validateEnvironment(config);
+
+    if(validateEnvironmenntResponse.isValid) {
+      let branch: string = (await $`git rev-parse --abbrev-ref HEAD`).stdout.trim();
+      const validateBranchResponse = await validateCommandBranch(branch, config);
+      if (validateBranchResponse.isValid) {
+        if(!type) {
+          if(config.preReleaseBranches[branch]) {
+            type = "PRE_RELEASE";
+          }
+          else {
+            type = await select({message: 'Select a bump type', choices: [{name: 'major', value: 'MAJOR'}, {name: 'minor', value: 'MINOR'}, {name: 'patch', value: 'PATCH'}]})
+          }
+        }
+        else {
+          const validateBumpTypeResponse = validateBumpType(type, branch, config);
+          if(!validateBumpTypeResponse.isValid) {
+            throw new Error(validateBumpTypeResponse.message);
+          }
+          else {
+            type = type.toUpperCase();
+          }
+        }
       }
-      catch (error) {
-        handleError(error as Error, "Pulling Changes");
-        process.exit(1);
+      else {
+        throw new Error(validateBranchResponse.message);
       }
-    });
-    
-    const validateVersionResponse = validateVersion(config.current);
-    if (!validateVersionResponse.isValid) {
-      handleError(new Error(validateVersionResponse.message), "Version Validation");
-      process.exit(1);
+      await pullLatest();
+
+      const newTag = createNewTag(branch, type);
+      
+      await set(newTag, force, true, true);
     }
-    const newTag = createNewTag(branch, type);
-    
-    await set(newTag, force, true, true);
+    else {
+      throw new Error(validateEnvironmenntResponse.message)
+    }
   }
   catch(error) {
     handleError(error as Error, 'Bumping Version');

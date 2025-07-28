@@ -3,16 +3,21 @@
 import { $ } from 'zx';
 import { ValidationResponse, VersionConfig } from './types';
 
-export const doesTagExist = async (tag: string) => {
+export const validateTagExists = async (tag: string): Promise<ValidationResponse> => {
   try {
     await $`git rev-parse refs/tags/${tag}`;
-    return true;
+    return {
+      isValid: true
+    };
   } catch {
-    return false;
+    return {
+      isValid: false,
+      message: `Tag ${tag} does not exist`
+    };
   }
 };
 
-export const validateTag = async (tag: string) => {
+export const validateTagStructure = async (tag: string): Promise<ValidationResponse> => {
   if(tag) {
     const semverRegex = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/;
     if (!semverRegex.test(tag)) {
@@ -33,25 +38,11 @@ export const validateTag = async (tag: string) => {
   };
 };
 
-export const validateInitBranch = async (branch: string): Promise<ValidationResponse> => {
-  if (!branch) {
+export const validateProjectName = (projectName: string): ValidationResponse => {
+  if (!/^[a-zA-Z0-9._-]+$/.test(projectName)) {
     return {
-      isValid: false,
-      message: 'Branch name cannot be empty.'
-    };
-  }
-  if (!/^[a-zA-Z0-9._-]+$/.test(branch)) {
-    return {
-      isValid: false,
-      message: 'Branch name can only contain alphanumeric characters, dots, underscores, and hyphens.'
-    };
-  }
-  const { stdout } = await $`git branch`;
-  const branches = stdout.split('\n').map(b => b.trim().replace('* ', ''));
-  if (!branches.includes(branch)) {
-    return {
-      isValid: false,
-      message: `Branch ${branch} does not exist in the repository.`
+      message: 'Project name can only contain alphanumeric characters, dots, underscores, and hyphens.',
+      isValid: false
     };
   }
   return {
@@ -59,7 +50,22 @@ export const validateInitBranch = async (branch: string): Promise<ValidationResp
   };
 };
 
-export const validateInitPreReleaseName = (name: string, otherNames: string[]): ValidationResponse => {
+export const validatePreReleases = async (preReleases: Record<string, string>): Promise<ValidationResponse[]> => {
+  let validationResponses:ValidationResponse[] = [];
+  const preReleaseBranches = Object.keys(preReleases);
+  const preReleaseNames = Object.values(preReleases);
+
+  await Promise.all(Object.entries(preReleases).map(async ([preReleaseBranch, preReleaseName]) => {
+    const validateBranchResponse = await validatePreReleaseBranch(preReleaseBranch, preReleaseBranches.filter(prb => prb !== preReleaseName));
+    const validatePreReleaseNameResponse = validatePreReleaseName(preReleaseName, preReleaseNames.filter(prn => prn !== preReleaseName));
+  
+    validationResponses = [...validationResponses, validateBranchResponse, validatePreReleaseNameResponse];
+  }));
+
+  return validationResponses.filter(vr => !vr.isValid);
+};
+
+export const validatePreReleaseName = (name: string, otherNames: string[]): ValidationResponse => {
   if (!name) {
     return {
       isValid: false,
@@ -69,25 +75,13 @@ export const validateInitPreReleaseName = (name: string, otherNames: string[]): 
   if (!/^[a-zA-Z0-9._-]+$/.test(name)) {
     return {
       isValid: false,
-      message: 'Pre-release name can only contain alphanumeric characters, dots, underscores, and hyphens.'
+      message: `Pre-release name "${name}" can only contain alphanumeric characters, dots, underscores, and hyphens.`
     };
   }
   if(otherNames.includes(name)) {
     return {
       isValid: false,
-      message: `Pre-release name "${name}" already exists. Please choose a different name.`
-    };
-  }
-  return {
-    isValid: true
-  };
-};
-export const validateBranch = (branch: string, config: VersionConfig) => {
-  const validBranches = [config.releaseBranch, ...Object.values(config.preReleaseBranches)]
-  if(!validBranches.includes(branch)) {
-    return {
-      isValid: false,
-      message: `Branch ${branch} is not a branch for bumping. Valid branches is: [${validBranches.join(", ")}]`
+      message: `Pre-release name "${name}" already defined elswhere.`
     };
   }
   return {
@@ -95,10 +89,77 @@ export const validateBranch = (branch: string, config: VersionConfig) => {
   };
 };
 
-export const validateBranchAndTag = async (branch: string, tag: string, config: VersionConfig) => {
-  const validateBranchResponse = validateBranch(branch, config);
+export const validatePreReleaseBranch = async (branch: string, otherBranches: string[]): Promise<ValidationResponse> => {
+  const validateBranchResponse = await validateBranchExists(branch);
   if(validateBranchResponse.isValid) {
-    const validateTagResponse= await validateTag(tag);
+    if(otherBranches.includes(branch)) {
+      return {
+        isValid: false,
+        message: `Pre-release branch "${branch}" already defined elswhere.`
+      };
+    }
+    return {
+      isValid: true
+    };
+  }
+  else {
+    return validateBranchResponse;
+  }
+};
+
+export const validateBranchExists = async (branch: string): Promise<ValidationResponse> => {
+  const { stdout } = await $`git branch --list ${branch}`;
+
+  if (stdout.trim()) {
+    return {
+      isValid: true
+    };
+  } else {
+    return {
+      isValid: false,
+      message: `Branch ${branch} does not exist`
+    };
+  }
+};
+
+export const validateCommandBranch = async (branch: string, config: VersionConfig): Promise<ValidationResponse> => {
+  const validateBranchResponse = await validateBranchExists(branch);
+  if(validateBranchResponse.isValid) {
+    const releaseBranch = config.releaseBranch;
+    const preReleaseBranches = Object.keys(config.preReleaseBranches);
+    const validBranches = [releaseBranch, ...preReleaseBranches];
+    
+    if(!validBranches.includes(branch)) {
+      if(branch !== releaseBranch) {
+        return {
+          isValid: false,
+          message: `Branch ${branch} is not valid for this command. Valid branch is: ${releaseBranch}`
+        };
+      }
+      else if(!preReleaseBranches.includes(branch)) {
+        return {
+          isValid: false,
+          message: `Branch ${branch} is not valid for this command. Valid branches are: [${preReleaseBranches.join(", ")}]`
+        };
+      }
+      return {
+        isValid: false,
+        message: `Branch ${branch} is not valid for this command. Valid branches are: [${validBranches.join(", ")}]`
+      };
+    }
+    return {
+      isValid: true
+    };
+  }
+  else {
+    return validateBranchResponse;
+  }
+};
+
+export const validateBranchAndTag = async (branch: string, tag: string, config: VersionConfig): Promise<ValidationResponse> => {
+  const validateBranchResponse = await validateCommandBranch(branch, config);
+  if(validateBranchResponse.isValid) {
+    const validateTagResponse= await validateTagStructure(tag);
     if(validateTagResponse.isValid) {
       const tagSections = tag.split("-");
       if(tagSections.length === 1 && config.preReleaseBranches[branch]) {
@@ -124,8 +185,8 @@ export const validateBranchAndTag = async (branch: string, tag: string, config: 
   }
 }
 
-export const validateBumpBranchAndType = (branch: string, type: string, verConfig: VersionConfig): ValidationResponse => {
-  const validateBranchResponse = validateBranch(branch, verConfig);
+export const validateBumpBranchAndType = async (branch: string, type: string, verConfig: VersionConfig): Promise<ValidationResponse> => {
+  const validateBranchResponse = await validateCommandBranch(branch, verConfig);
   if(!validateBranchResponse.isValid) {
     return validateBranchResponse;
   }
@@ -155,6 +216,30 @@ export const validateBumpBranchAndType = (branch: string, type: string, verConfi
   }
 };
 
+export const validateAutoPushToRemote = (autoPushToRemote: boolean): ValidationResponse => {
+  if(typeof autoPushToRemote !== 'boolean') {
+    return {
+      isValid: false,
+      message: "autoPushToRemote can only be true or false"
+    };
+  }
+  return {
+    isValid: true
+  };
+};
+
+export const validateUpdatePackageJson = (updatePackageJson: boolean): ValidationResponse => {
+  if(typeof updatePackageJson !== 'boolean') {
+    return {
+      isValid: false,
+      message: "updatePackageJson can only be true or false"
+    };
+  }
+  return {
+    isValid: true
+  };
+};
+
 export const validateBumpType = (type: string, branch: string, verConfig: VersionConfig): ValidationResponse => {
   if (!['MAJOR', 'MINOR', 'PATCH', 'PRE-RELEASE'].includes(type)) {
     return {
@@ -179,8 +264,8 @@ export const validateBumpType = (type: string, branch: string, verConfig: Versio
   };
 };
 
-export const validateConfig = (config: VersionConfig): ValidationResponse => {
-  const requiredFields = ['current', 'releaseBranch', 'preReleaseBranches'] as const;
+export const validateConfig = async (config: VersionConfig): Promise<ValidationResponse[]> => {
+  const requiredFields = ['name', 'current', 'precededBy', 'releaseBranch', 'preReleaseBranches', 'autoPushToRemote', 'updatePackageJson', 'remote'] as const;
   const missingFields: string[] = [];
   for (const field of requiredFields) {
     if (!config[field as keyof VersionConfig]) {
@@ -188,12 +273,44 @@ export const validateConfig = (config: VersionConfig): ValidationResponse => {
     }
   }
   if(missingFields.length > 0) {
-    return {
+    return [{
       isValid: false,
       message: `Missing required fields in version config: ${missingFields.join(', ')}`
+    }];
+  }
+  else {
+    let invalidResponses = (await Promise.all([
+      validateProjectName(config.name),
+      validateTagStructure(config.current),// check
+      validateTagStructure(config.precededBy),
+      await validateCommandBranch(config.releaseBranch, config),
+      validateRemote(config.remote), 
+      validateAutoPushToRemote(config.autoPushToRemote),
+      validateUpdatePackageJson(config.updatePackageJson),
+      ...(await validatePreReleases(config.preReleaseBranches)),
+    ])).filter(validationResponse => validationResponse.isValid);
+
+    return invalidResponses.length > 0 ? invalidResponses : [{isValid: true}];
+  }
+};
+
+export const validateEnvironment = async (config: any) => {
+  const validateConfigResponses = await validateConfig(config);
+  const validateGitResponse = await validateGit();
+  if(!validateConfigResponses.find(vcr => vcr.isValid) || !validateGitResponse.isValid) {
+    let invalidResponses: ValidationResponse[] = [];
+    if(validateConfigResponses.filter(vcr => !vcr.isValid).length > 0) {
+      invalidResponses = validateConfigResponses;
+    }
+    if(validateGitResponse.isValid) {
+      invalidResponses = [...invalidResponses, validateGitResponse];
+    }
+
+    return {
+      isValid: false,
+      message: invalidResponses.map(ir => ir.message).join('\n')
     };
   }
-  
   return {
     isValid: true
   };
@@ -213,7 +330,7 @@ export const validateVersion = (version: string): ValidationResponse => {
   };
 };
 
-export const isGitRepository = async (): Promise<ValidationResponse> => {
+export const validateGit = async (): Promise<ValidationResponse> => {
   try {
     await $`git rev-parse --is-inside-work-tree`;
     return {
@@ -227,8 +344,7 @@ export const isGitRepository = async (): Promise<ValidationResponse> => {
   }
 };
 
-
-export const validateRemote = async (remote: string) => {
+export const validateRemote = async (remote: string): Promise<ValidationResponse> => {
   try {
     await $`git remote get-url ${remote}`;
     return { isValid: true };
@@ -236,12 +352,3 @@ export const validateRemote = async (remote: string) => {
     return { isValid: false, message: `Remote "${remote}" does not exist.` };
   }
 };
-
-export async function remoteExists(remoteName: string) {
-  try {
-    await $`git remote get-url ${remoteName}`;
-    return true;
-  } catch {
-    return false;
-  }
-}

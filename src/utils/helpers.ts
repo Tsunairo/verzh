@@ -1,14 +1,10 @@
 #!/usr/bin/env zx
 
-import { chalk, $, spinner, fs } from 'zx';
-import { input, search, select, confirm } from '@inquirer/prompts';
-import { isGitRepository, validateConfig } from './validators';
-import { PromptChoices, PromptSource, PromptType } from './types';
+import { chalk, $, spinner } from 'zx';
 
 export const handleError = (error: Error, context: string): void => {
   console.error(chalk.red(`Error in ${context}:`));
   console.error(chalk.red(error.message));
-  process.exit(1);
 };
 
 export const hasUncommittedChanges = async (): Promise<boolean> => {
@@ -66,25 +62,6 @@ export async function fetchGitRemotes(): Promise<string[]> {
     console.error('❌ Failed to list git remotes:', err);
     return [];
   }
-}
-
-export const prompt = async (message: string, type?: PromptType, choices?: PromptChoices, source?: PromptSource) => {
-  
-  switch(type) {
-    case 'confirm':
-      return await confirm({message});
-    case 'search':
-      if(source) {
-        return await search({message, source});
-      }
-      else {
-        throw Error('Prompt source cant be empty');
-      }
-    case 'select':
-      return await select({message, choices: choices ?? []});
-    default:
-      return await input({ message: message });
-  }
 };
 
 export const pullLatest = async () => {
@@ -100,27 +77,4 @@ export const pullLatest = async () => {
       }
     });
   }
-};
-
-export const loadConfig = async(configPath: string) => {
-
-  let config;
-  try {
-    config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-    const validateConfigResponse = validateConfig(config);
-    if (!validateConfigResponse.isValid) {
-      handleError(new Error(validateConfigResponse.message), 'Configuration Validation');
-      process.exit(1);
-    };
-    const isGitRepo = await isGitRepository();
-    if (!isGitRepo.isValid) {
-      handleError(new Error(isGitRepo.message), 'Git exists');
-      process.exit(1);
-    };
-  }
-  catch(error) {
-    handleError(error as Error, 'Configuration');
-    process.exit(1);
-  }
-  return config;
 };
