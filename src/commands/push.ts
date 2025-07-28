@@ -1,15 +1,17 @@
 #!/usr/bin/env zx
 
-import { chalk, echo, spinner, fs, $ } from 'zx';
+import { chalk, echo, spinner, $ } from 'zx';
 import { VersionConfig } from '../utils/types';
-import { validateTagExists, validateConfig } from '../utils/validators';
-import { handleError, loadConfig, prompt } from '../utils/helpers';
+import { validateTagExists } from '../utils/validators';
+import { handleError } from '../utils/helpers';
+import { confirm } from '@inquirer/prompts';
+import getConfig from './getConfig';
 
-$.verbose = false
-const configPath = "verzh.config.json";
+$.verbose = false;
 
 // Initialize with default values
 let config: VersionConfig = {
+  name: '',
   current: '1.0.0',
   precededBy: '',
   releaseBranch: 'main',
@@ -19,42 +21,49 @@ let config: VersionConfig = {
   remote: 'origin'
 };
 
-const push = async (tag: string, force?: boolean) => {
-  config = await loadConfig(configPath);
-  const tagExists = await validateTagExists(tag);
-  if(!tagExists) {
-    handleError(new Error("Tag does not exist exists"), "Tag Validation");
+const push = async (tag: string, force?: boolean, isEnvValidated?: boolean) => {
+  try {
+    config = await getConfig(isEnvValidated);
+  
+    const validateTagExistsResponse = await validateTagExists(tag);
+    if(!validateTagExistsResponse.isValid) {
+      throw new Error(validateTagExistsResponse.message);
+    }
+    
+    let pushChanges =config.autoPushToRemote;
+    if (!config.autoPushToRemote) {
+      if(!force) {
+        const pushInput = await confirm({message: `Push version ${tag}?`});
+        if (!pushInput) {
+          pushChanges = false;
+        }
+      }
+    }
+    if (pushChanges) {
+      let spinnerError: Error | null = null;
+      await spinner(chalk.blueBright(`Pushing version ${tag}...`), async () => {
+        try {
+          await $`git push -u ${config.remote} ${config.releaseBranch}`;
+          await $`git push ${config.remote} ${tag}`;
+        } catch (error) {
+          spinnerError = error as Error;
+        }
+      });
+      if (spinnerError) {
+        throw spinnerError;
+      } else {
+        echo(chalk.greenBright(`Version ${tag} pushed.`));
+      }
+    } else {
+      echo(chalk.yellowBright(`Version ${tag} not pushed.`));
+    }
+  }
+  catch(error) {
+    handleError(error as Error, 'Setting Version');
     process.exit(1);
   }
-  
-  let pushChanges =config.autoPushToRemote;
-  if (!config.autoPushToRemote) {
-    if(!force) {
-      const pushInput = await prompt(`\nPush version ${tag}?`, 'confirm');
-      if (!pushInput) {
-        pushChanges = false;
-      }
-    }
-  }
-  if (pushChanges) {
-    let spinnerError: Error | null = null;
-    await spinner(chalk.blueBright(`Pushing version ${tag}...`), async () => {
-      try {
-        await $`git push -u ${config.remote} ${config.releaseBranch}`;
-        await $`git push ${config.remote} ${tag}`;
-      } catch (error) {
-        spinnerError = error as Error;
-      }
-    });
-    if (spinnerError) {
-      handleError(spinnerError, "Pushing Version");
-      echo(chalk.redBright(`Failed to push version ${tag}.`));
-      process.exit(1);
-    } else {
-      echo(chalk.greenBright(`Version ${tag} pushed.`));
-    }
-  } else {
-    echo(chalk.yellowBright(`Version ${tag}  not pushed.`));
+  finally {
+    process.exit(0);
   }
 };
 

@@ -29,7 +29,6 @@ program.command('bump')
   .option('-t, --type <type>', 'bump type (major, minor, patch, pre-release)')
   .option('-f, --force', 'ignore confirmation prompts and force version creation')
   .action(async (options) => {
-    console.log(`Bumping version with type: ${options.type || 'auto-detected'} and force: ${options.force}`);
     await bump(options.type, options.force);
   });
 
@@ -38,8 +37,6 @@ program.command('set')
   .option('-t, --tag <tag>', 'a valid tag (1.0.2 | 1.0.2-dev.2')
   .option('-f, --force', 'ignore confirmation prompts and force version creation')
   .action(async (options) => {
-    console.log(`Bumping version with type: ${options.tag || 'auto-detected'} and force: ${options.force}`);
-
     await set(options.tag, options.force);
   });
 

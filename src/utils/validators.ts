@@ -268,7 +268,7 @@ export const validateConfig = async (config: VersionConfig): Promise<ValidationR
   const requiredFields = ['name', 'current', 'precededBy', 'releaseBranch', 'preReleaseBranches', 'autoPushToRemote', 'updatePackageJson', 'remote'] as const;
   const missingFields: string[] = [];
   for (const field of requiredFields) {
-    if (!config[field as keyof VersionConfig]) {
+    if (!Object.keys(config).includes(field)) {
       missingFields.push(field);
     }
   }

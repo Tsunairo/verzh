@@ -2,15 +2,18 @@
 
 import { chalk, echo, spinner, fs, $ } from 'zx';
 import { VersionConfig } from '../utils/types';
-import { validateTagExists, validateBranchAndTag, validateBumpBranchAndType } from '../utils/validators';
-import { handleError, hasUncommittedChanges, loadConfig, prompt, pullLatest } from '../utils/helpers';
+import { validateTagExists, validateBranchAndTag } from '../utils/validators';
+import { handleError, hasUncommittedChanges, pullLatest } from '../utils/helpers';
 import push from './push';
+import { confirm } from '@inquirer/prompts';
+import getConfig from './getConfig';
 
-$.verbose = false
+$.verbose = false;
 const configPath = "verzh.config.json";
 
 // Initialize with default values
 let config: VersionConfig = {
+  name: '',
   current: '1.0.0',
   precededBy: '',
   releaseBranch: 'main',
@@ -20,28 +23,11 @@ let config: VersionConfig = {
   remote: 'origin'
 };
 
-const getType = (branch: string, providedType?: string) => {
-  if(!providedType === (config.releaseBranch === branch || config.preReleaseBranches[branch])) {
-    providedType = config.preReleaseBranches[branch] ? "PRE_RELEASE" : "PATCH";
-  }
-  else {
-    handleError(new Error(`Type is required. Please specify a type.`), "Type Validation");
-    process.exit(1);
-  }
-  const validateBranchResponse = validateBumpBranchAndType(branch, providedType, config);
-  if (!validateBranchResponse.isValid) {
-    handleError(new Error(validateBranchResponse.message), "Branch & Type Validation");
-    process.exit(1);
-  }
-
-  return providedType;
-};
-
 const createVersion = async (tag: string, force?: boolean): Promise<void> => {
   if(!force) {
     if (await hasUncommittedChanges()) {
-      const proceed = await prompt(
-        chalk.yellow('\nThere are uncommitted changes in your working directory. Proceed anyway? '), 'confirm'
+      const proceed = await confirm(
+        {message: chalk.yellow('\nThere are uncommitted changes in your working directory. Proceed anyway? ')}
       );
       
       if (!proceed) {
@@ -82,24 +68,23 @@ const createVersion = async (tag: string, force?: boolean): Promise<void> => {
     return;
   }
   echo(chalk.greenBright(`Version ${tag} created 👍✅!`));
-  await push(tag, force);
+  await push(tag, force, true);
 };
 
-const set = async (tag: string, force?: boolean, isBranchAndTagValidated?: boolean, isPulled?: boolean): Promise<void> => {
-  config = await loadConfig(configPath);
+const set = async (tag: string, force?: boolean, isBranchAndTagValidated?: boolean, isPulled?: boolean, isEnvValidated?: boolean): Promise<void> => {
   try {
+    config = await getConfig(isEnvValidated);
+
     let branch: string = (await $`git rev-parse --abbrev-ref HEAD`).stdout.trim();
     if(!isBranchAndTagValidated) {
       const validateBranchAndTagResponse = await validateBranchAndTag(branch, tag, config);
       if (!validateBranchAndTagResponse.isValid) {
-        handleError(new Error(validateBranchAndTagResponse.message), "Branch and Tag Validation");
-        process.exit(1);
+        throw new Error(validateBranchAndTagResponse.message);
       }
       else {
-        const tagExists = await validateTagExists(tag);
-        if(tagExists) {
-          handleError(new Error("Tag already exists"), "Tag Validation");
-          process.exit(1);
+        const validateTagExistsResponse = await validateTagExists(tag);
+        if(!validateTagExistsResponse.isValid) {
+          throw new Error(validateTagExistsResponse.message);
         }
       }
     }
@@ -111,17 +96,18 @@ const set = async (tag: string, force?: boolean, isBranchAndTagValidated?: boole
       await createVersion(tag, force); // Force version creation without confirmation
     }
     else {
-      const createVersionInput = await prompt(`\nCreate version: ${tag} ?`, 'confirm');
+      const createVersionInput = await confirm({message: `Create version: ${tag} ?`});
       if (createVersionInput) {
         await createVersion(tag, force);
       } else {
-        echo(chalk.redBright("Version not pushed"));
+        echo(chalk.yellowBright("Version not pushed"));
         process.exit(0);
       }
     }
   }
   catch(error) {
-    handleError(error as Error, 'Bumping Version');
+    handleError(error as Error, 'Setting Version');
+    process.exit(1);
   }
   finally {
     process.exit(0);

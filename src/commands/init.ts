@@ -101,7 +101,7 @@ const remoteQuestion: Question = {
   prompt: async () => {
     const remotes = await fetchGitRemotes();
     const response = await search({message: "Select remote", source: (async (term = '') => {
-      return remotes.filter(remote => !remote.includes(term)).map(branch => ({
+      return remotes.filter(remote => remote.includes(term)).map(branch => ({
         name: branch,
         value: branch
       }));

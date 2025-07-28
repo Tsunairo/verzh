@@ -1,10 +1,10 @@
 {
-  "current": "1.0.8",
-  "precededBy": "1.0.7",
+  "name": "verzh",
+  "current": "1.0.9",
+  "precededBy": "1.0.8",
+  "preReleaseBranches": {},
   "releaseBranch": "main",
   "autoPushToRemote": true,
-  "preReleaseBranches": {},
   "updatePackageJson": true,
-  "remote": "origin",
-  "name": "verzh"
+  "remote": "origin"
 }

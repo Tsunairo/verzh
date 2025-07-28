@@ -1,15 +1,15 @@
 #!/usr/bin/env zx
 
-import { spinner, $, fs } from 'zx';
-import { ValidationResponse, VersionConfig } from '../utils/types';
-import { validateCommandBranch, validateBumpType, validateConfig, validateGit, validateEnvironment } from '../utils/validators';
+import { $ } from 'zx';
+import { VersionConfig } from '../utils/types';
+import { validateCommandBranch, validateBumpType } from '../utils/validators';
 import { handleError, pullLatest } from '../utils/helpers';
 import set from './set';
 import { select } from '@inquirer/prompts';
+import getConfig from './getConfig';
 
 
-$.verbose = false
-const configPath = "verzh.config.json";
+$.verbose = false;
 
 // Initialize with default values
 let config: VersionConfig = {
@@ -71,43 +71,37 @@ const createNewTag = (branch: string, type: string) => {
 
 const bump = async (type?: string, force?: boolean): Promise<void> => {
   try {
-    config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-    const validateEnvironmenntResponse = await validateEnvironment(config);
+    config = await getConfig();
 
-    if(validateEnvironmenntResponse.isValid) {
-      let branch: string = (await $`git rev-parse --abbrev-ref HEAD`).stdout.trim();
-      const validateBranchResponse = await validateCommandBranch(branch, config);
-      if (validateBranchResponse.isValid) {
-        if(!type) {
-          if(config.preReleaseBranches[branch]) {
-            type = "PRE_RELEASE";
-          }
-          else {
-            type = await select({message: 'Select a bump type', choices: [{name: 'major', value: 'MAJOR'}, {name: 'minor', value: 'MINOR'}, {name: 'patch', value: 'PATCH'}]})
-          }
+    let branch: string = (await $`git rev-parse --abbrev-ref HEAD`).stdout.trim();
+    const validateBranchResponse = await validateCommandBranch(branch, config);
+    if (validateBranchResponse.isValid) {
+      if(!type) {
+        if(config.preReleaseBranches[branch]) {
+          type = "PRE_RELEASE";
         }
         else {
-          const validateBumpTypeResponse = validateBumpType(type, branch, config);
-          if(!validateBumpTypeResponse.isValid) {
-            throw new Error(validateBumpTypeResponse.message);
-          }
-          else {
-            type = type.toUpperCase();
-          }
+          type = await select({message: 'Select a bump type', choices: [{name: 'major', value: 'MAJOR'}, {name: 'minor', value: 'MINOR'}, {name: 'patch', value: 'PATCH'}]})
         }
       }
       else {
-        throw new Error(validateBranchResponse.message);
+        const validateBumpTypeResponse = validateBumpType(type, branch, config);
+        if(!validateBumpTypeResponse.isValid) {
+          throw new Error(validateBumpTypeResponse.message);
+        }
+        else {
+          type = type.toUpperCase();
+        }
       }
-      await pullLatest();
-
-      const newTag = createNewTag(branch, type);
-      
-      await set(newTag, force, true, true);
     }
     else {
-      throw new Error(validateEnvironmenntResponse.message)
+      throw new Error(validateBranchResponse.message);
     }
+    await pullLatest();
+
+    const newTag = createNewTag(branch, type);
+    
+    await set(newTag, force, true, true, true);
   }
   catch(error) {
     handleError(error as Error, 'Bumping Version');
