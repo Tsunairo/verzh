@@ -81,7 +81,8 @@ const bump = async (type?: string, force?: boolean): Promise<void> => {
           type = "PRE_RELEASE";
         }
         else {
-          type = await select({message: 'Select a bump type', choices: [{name: 'major', value: 'MAJOR'}, {name: 'minor', value: 'MINOR'}, {name: 'patch', value: 'PATCH'}]})
+          type = 'PATCH';
+          // type = await select({message: 'Select a bump type', choices: [{name: 'major', value: 'MAJOR'}, {name: 'minor', value: 'MINOR'}, {name: 'patch', value: 'PATCH'}]})
         }
       }
       else {
