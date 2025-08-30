@@ -43,7 +43,9 @@ const push = async (tag: string, force?: boolean, isEnvValidated?: boolean) => {
       let spinnerError: Error | null = null;
       await spinner(chalk.blueBright(`Pushing version ${tag}...`), async () => {
         try {
-          await $`git push -u ${config.remote} ${config.releaseBranch}`;
+          let branch: string = (await $`git rev-parse --abbrev-ref HEAD`).stdout.trim();
+
+          await $`git push -u ${config.remote} ${branch}`;
           await $`git push ${config.remote} ${tag}`;
         } catch (error) {
           spinnerError = error as Error;

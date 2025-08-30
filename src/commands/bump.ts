@@ -81,11 +81,16 @@ const bump = async (type?: string, force?: boolean): Promise<void> => {
           type = "PRE_RELEASE";
         }
         else {
-          type = 'PATCH';
-          // type = await select({message: 'Select a bump type', choices: [{name: 'major', value: 'MAJOR'}, {name: 'minor', value: 'MINOR'}, {name: 'patch', value: 'PATCH'}]})
+          if(!force) {
+            type = await select({message: 'Select a bump type', choices: [{name: 'major', value: 'MAJOR'}, {name: 'minor', value: 'MINOR'}, {name: 'patch', value: 'PATCH'}]})
+          }
+          else {
+            handleError(new Error('Bump type is required when using --force'), 'Bumping Version');
+          }
         }
       }
       else {
+        type = type.toUpperCase();
         const validateBumpTypeResponse = validateBumpType(type, branch, config);
         if(!validateBumpTypeResponse.isValid) {
           throw new Error(validateBumpTypeResponse.message);
