@@ -185,7 +185,7 @@ const init = async () => {
   fs.writeFileSync('verzh.config.json', JSON.stringify(config, null, 2));
   echo(chalk.greenBright('Version configuration initialized successfully.'));
 
-  const tagExists = await validateTagExists(config.current);
+  const tagExists = (await validateTagExists(config.current)).isValid;
   if(!tagExists) {
     const setTagPrompt = await confirm({message: `Noticed version ${config.current} does not exist. Create it?`});
     if(setTagPrompt) {

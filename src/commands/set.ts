@@ -82,9 +82,9 @@ const set = async (tag: string, force?: boolean, isBranchAndTagValidated?: boole
         throw new Error(validateBranchAndTagResponse.message);
       }
       else {
-        const validateTagExistsResponse = await validateTagExists(tag);
-        if(!validateTagExistsResponse.isValid) {
-          throw new Error(validateTagExistsResponse.message);
+        const tagExists = (await validateTagExists(tag)).isValid;
+        if(tagExists) {
+          throw new Error(`Tag ${tag} already exists`);
         }
       }
     }
