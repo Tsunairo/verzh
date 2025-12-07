@@ -31,15 +31,12 @@
   "main": "dist/cli.js",
   "scripts": {
     "test": "verzh",
-    "compile": "tsc --outDir dist",
-    "build": "npm run compile && npm run clean",
-    "clean": "rimraf src .github tsconfig.json verzh.config.json"
+    "compile": "tsc --outDir dist"
   },
   "bin": {
     "verzh": "dist/cli.js"
   },
   "devDependencies": {
-    "@types/node": "^24.0.15",
-    "rimraf": "^6.0.1"
+    "@types/node": "^24.0.15"
   }
 }
