@@ -337,12 +337,13 @@ export const validateChangesCommitted = async (): Promise<ValidationResponse> =>
     // Check for staged and unstaged changes
     const { stdout: stagedChanges } = await $`git diff --cached --quiet || echo "staged"`;
     const { stdout: unstagedChanges } = await $`git diff --quiet || echo "unstaged"`;
-    changesCommitted = !(stagedChanges === "staged" || unstagedChanges === "unstaged");
+    changesCommitted = (stagedChanges === "staged" || unstagedChanges === "unstaged");
+    
   } catch (error) {
     // Git commands might throw if there are changes
     changesCommitted = false;
   }
-  if(changesCommitted) {
+  if(!changesCommitted) {
     return { isValid: false, message: 'There are changes that have not been committed. Commit or stash them before running this command.' };
   }
   return { isValid: true };

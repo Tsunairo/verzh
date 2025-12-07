@@ -3,7 +3,7 @@
 import { chalk, echo, fs } from 'zx';
 import { Question, VersionConfig } from '../utils/types';
 import { validateTagExists, validateGit, validateTagStructure, validatePreReleaseName, validateProjectName, validateChangesCommitted } from '../utils/validators';
-import { fetchGitBranches, fetchGitRemotes } from '../utils/helpers';
+import { fetchGitBranches, fetchGitRemotes, handleError } from '../utils/helpers';
 import set from './set';
 import { input, search, confirm } from '@inquirer/prompts';
 import path from 'path';
@@ -157,52 +157,52 @@ const questions: Question[] = [
 ];
 
 const init = async () => {
-  if (fs.existsSync('verzh.config.json')) {
-    const overwrite = await confirm({ message: 'Configuration exists. Overwrite?' });
-    if (!overwrite) {
-      echo(chalk.yellow('Initialization aborted.'));
-      process.exit(0);
-    }
-  }
-  const { message: isGitRepositoryMessage, isValid: isGitRepository } = await validateGit();
-  if (!isGitRepository) {
-    echo(chalk.redBright('This command must be run in a git repository.'));
-    process.exit(1);
-  }
-  const { message: changesCommittedMessage, isValid: changesCommitted }= await validateChangesCommitted();
-  if (!changesCommitted) {
-    echo(chalk.redBright(`${changesCommittedMessage}`));
-    process.exit(1);
-  }
-
-  for (const q of questions) {
-    if (q.preCondition && !(await q.preCondition())) {
-      // echo(chalk.yellow(`Skipping question: ${q.message}`));
-      continue;
-    }
-    do {
-      try {
-        const response = await q.prompt();
-        // config[q.name] = response;
-        (config as any)[q.name] = response; // TODO: Create a proper type-safe solution
-        break;
+  try {
+    if (fs.existsSync('verzh.config.json')) {
+      const overwrite = await confirm({ message: 'Configuration exists. Overwrite?' });
+      if (!overwrite) {
+        throw new Error('Initialization aborted.');
       }
-      catch (error: any) {
-        echo(chalk.redBright(error?.message));
+    }
+    const { message: isGitRepositoryMessage, isValid: isGitRepository } = await validateGit();
+    if (!isGitRepository) {
+      throw new Error(isGitRepositoryMessage);
+    }
+    const { message: changesCommittedMessage, isValid: changesCommitted }= await validateChangesCommitted();
+    if (!changesCommitted) {
+      throw new Error(changesCommittedMessage);
+    }
+    for (const q of questions) {
+      if (q.preCondition && !(await q.preCondition())) {
+        // echo(chalk.yellow(`Skipping question: ${q.message}`));
         continue;
       }
-    } while (true);
-  }
-
-  fs.writeFileSync('verzh.config.json', JSON.stringify(config, null, 2));
-  echo(chalk.greenBright('Version configuration initialized successfully.'));
-
-  const { isValid: tagExists } = await validateTagExists(config.current);
-  if (!tagExists) {
-    await set(config.current, true, true);
-  }
-  else {
+      do {
+        try {
+          const response = await q.prompt();
+          // config[q.name] = response;
+          (config as any)[q.name] = response; // TODO: Create a proper type-safe solution
+          break;
+        }
+        catch (error: any) {
+          echo(chalk.redBright(error?.message));
+          continue;
+        }
+      } while (true);
+    }
+    fs.writeFileSync('verzh.config.json', JSON.stringify(config, null, 2));
+    echo(chalk.greenBright('Version configuration initialized successfully.'));
+    const { isValid: tagExists } = await validateTagExists(config.current);
+    if (!tagExists) {
+      echo(chalk.greenBright(`Creating version ${config.current}`));
+      await set(config.current, true, true);
+    }
     process.exit(0);
+  }
+  catch (error) {
+    handleError(error as Error, "Initializing");
+    process.exit(1);
+
   }
 };
 

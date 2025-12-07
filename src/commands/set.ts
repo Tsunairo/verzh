@@ -90,7 +90,7 @@ const set = async (tag: string, force?: boolean, isEnvValidated?: boolean): Prom
       if (createVersionInput) {
         await createVersion(tag, force);
       } else {
-        echo(chalk.yellowBright("Version not pushed"));
+        echo(chalk.yellowBright("Version not created"));
         process.exit(0);
       }
     }
