@@ -1,7 +1,7 @@
 {
   "name": "verzh",
-  "current": "1.0.18",
-  "precededBy": "1.0.17",
+  "current": "1.0.19",
+  "precededBy": "1.0.18",
   "preReleaseBranches": {},
   "releaseBranch": "main",
   "autoPushToRemote": true,
