@@ -2,7 +2,7 @@
 
 import { $ } from 'zx';
 import { VersionConfig } from '../utils/types';
-import { validateCommandBranch, validateBumpType } from '../utils/validators';
+import { validateCommandBranch, validateBumpType, validateChangesCommitted } from '../utils/validators';
 import { handleError, pullLatest } from '../utils/helpers';
 import set from './set';
 import { select } from '@inquirer/prompts';
@@ -37,17 +37,17 @@ const createNewTag = (branch: string, type: string) => {
     preReleaseNum = Number(preRelease.split(".")[preRelease.split(".").length - 1]);
   }
 
-  if(branch === config.releaseBranch) {
-    if(type === "MAJOR") {
+  if (branch === config.releaseBranch) {
+    if (type === "MAJOR") {
       major++;
       minor = 0;
       patch = 0;
     }
-    else if(type === "MINOR") {
+    else if (type === "MINOR") {
       minor++;
       patch = 0;
     }
-    else if(type === "PATCH") {
+    else if (type === "PATCH") {
       patch++;
     }
   }
@@ -63,7 +63,7 @@ const createNewTag = (branch: string, type: string) => {
       }
     }
   }
-  
+
   const newTag = `${major}.${minor}.${patch}${preRelease ? "-" + preRelease : ""}`;
   return newTag;
 };
@@ -73,19 +73,23 @@ const bump = async (type?: string, force?: boolean): Promise<void> => {
   try {
     config = await getConfig();
 
+    const { message: changesCommittedMessage, isValid: changesCommitted } = await validateChangesCommitted();
+    if (!changesCommitted) {
+      throw new Error(changesCommittedMessage);
+    }
     let branch: string = (await $`git rev-parse --abbrev-ref HEAD`).stdout.trim();
     const validateBranchResponse = await validateCommandBranch(branch, config);
     if (validateBranchResponse.isValid) {
-      if(!type) {
-        if(config.preReleaseBranches[branch]) {
+      if (!type) {
+        if (config.preReleaseBranches[branch]) {
           type = "PRE_RELEASE";
         }
         else {
-          if(config.releaseBranch === branch) {
+          if (config.releaseBranch === branch) {
             type = "PATCH";
           }
-          else if(!force) {
-            type = await select({message: 'Select a bump type', choices: [{name: 'major', value: 'MAJOR'}, {name: 'minor', value: 'MINOR'}, {name: 'patch', value: 'PATCH'}]})
+          else if (!force) {
+            type = await select({ message: 'Select a bump type', choices: [{ name: 'major', value: 'MAJOR' }, { name: 'minor', value: 'MINOR' }, { name: 'patch', value: 'PATCH' }] })
           }
           else {
             throw new Error('Bump type is required when using --force');
@@ -95,7 +99,7 @@ const bump = async (type?: string, force?: boolean): Promise<void> => {
       else {
         type = type.toUpperCase();
         const validateBumpTypeResponse = validateBumpType(type, branch, config);
-        if(!validateBumpTypeResponse.isValid) {
+        if (!validateBumpTypeResponse.isValid) {
           throw new Error(validateBumpTypeResponse.message);
         }
         else {
@@ -109,10 +113,10 @@ const bump = async (type?: string, force?: boolean): Promise<void> => {
     await pullLatest();
 
     const newTag = createNewTag(branch, type);
-    
-    await set(newTag, force, true, true, true);
+
+    await set(newTag, force, true);
   }
-  catch(error) {
+  catch (error) {
     handleError(error as Error, 'Bumping Version');
   }
   finally {

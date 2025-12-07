@@ -10,8 +10,6 @@ const banner = fs.readFileSync(path.join(__dirname, '../banner.txt'), 'utf8').re
 
 console.log(banner);
 
-// src, tsconfig, verzh.config
-
 const program = new Command();
 program
   .name('ver')

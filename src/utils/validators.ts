@@ -294,28 +294,6 @@ export const validateConfig = async (config: VersionConfig): Promise<ValidationR
   }
 };
 
-export const validateEnvironment = async (config: any) => {
-  const validateConfigResponses = await validateConfig(config);
-  const validateGitResponse = await validateGit();
-  if(!validateConfigResponses.find(vcr => vcr.isValid) || !validateGitResponse.isValid) {
-    let invalidResponses: ValidationResponse[] = [];
-    if(validateConfigResponses.filter(vcr => !vcr.isValid).length > 0) {
-      invalidResponses = validateConfigResponses;
-    }
-    if(validateGitResponse.isValid) {
-      invalidResponses = [...invalidResponses, validateGitResponse];
-    }
-
-    return {
-      isValid: false,
-      message: invalidResponses.map(ir => ir.message).join('\n')
-    };
-  }
-  return {
-    isValid: true
-  };
-};
-
 export const validateVersion = (version: string): ValidationResponse => {
   const semverRegex = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/;
   const isValid = semverRegex.test(version);
@@ -339,7 +317,7 @@ export const validateGit = async (): Promise<ValidationResponse> => {
   } catch (error) {
     return {
       isValid: false,
-      message: 'This command must be run inside a Git repository.'
+      message: 'This is not a git repository.'
     }
   }
 };
@@ -351,4 +329,21 @@ export const validateRemote = async (remote: string): Promise<ValidationResponse
   } catch {
     return { isValid: false, message: `Remote "${remote}" does not exist.` };
   }
+};
+
+export const validateChangesCommitted = async (): Promise<ValidationResponse> => {
+  let changesCommitted = false;
+  try {
+    // Check for staged and unstaged changes
+    const { stdout: stagedChanges } = await $`git diff --cached --quiet || echo "staged"`;
+    const { stdout: unstagedChanges } = await $`git diff --quiet || echo "unstaged"`;
+    changesCommitted = !(stagedChanges === "staged" || unstagedChanges === "unstaged");
+  } catch (error) {
+    // Git commands might throw if there are changes
+    changesCommitted = false;
+  }
+  if(changesCommitted) {
+    return { isValid: false, message: 'There are changes that have not been committed. Commit or stash them before running this command.' };
+  }
+  return { isValid: true };
 };

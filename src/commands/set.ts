@@ -2,8 +2,8 @@
 
 import { chalk, echo, spinner, fs, $ } from 'zx';
 import { VersionConfig } from '../utils/types';
-import { validateTagExists, validateBranchAndTag } from '../utils/validators';
-import { handleError, hasUncommittedChanges, pullLatest } from '../utils/helpers';
+import { validateTagExists, validateBranchAndTag, validateChangesCommitted } from '../utils/validators';
+import { handleError, pullLatest } from '../utils/helpers';
 import push from './push';
 import { confirm } from '@inquirer/prompts';
 import getConfig from './getConfig';
@@ -24,19 +24,7 @@ let config: VersionConfig = {
 };
 
 const createVersion = async (tag: string, force?: boolean): Promise<void> => {
-  if(!force) {
-    if (await hasUncommittedChanges()) {
-      const proceed = await confirm(
-        {message: chalk.yellow('\nThere are uncommitted changes in your working directory. Proceed anyway? ')}
-      );
-      
-      if (!proceed) {
-        echo(chalk.yellowBright('Version creation cancelled. Please commit or stash your changes first.'));
-        process.exit(1);
-      }
-    }
-  }
-  if(config.updatePackageJson) {
+  if (config.updatePackageJson) {
     try {
       const packageJsonPath = 'package.json';
       if (fs.existsSync(packageJsonPath)) {
@@ -46,7 +34,7 @@ const createVersion = async (tag: string, force?: boolean): Promise<void> => {
         echo(chalk.greenBright(`Updated version in ${packageJsonPath} to ${tag}`));
       }
     }
-    catch(error) {
+    catch (error) {
       handleError(error as Error, "Updating package.json");
       return;
     }
@@ -71,32 +59,34 @@ const createVersion = async (tag: string, force?: boolean): Promise<void> => {
   await push(tag, force, true);
 };
 
-const set = async (tag: string, force?: boolean, isBranchAndTagValidated?: boolean, isPulled?: boolean, isEnvValidated?: boolean): Promise<void> => {
+const set = async (tag: string, force?: boolean, isEnvValidated?: boolean): Promise<void> => {
   try {
+    
     config = await getConfig(isEnvValidated);
-
     let branch: string = (await $`git rev-parse --abbrev-ref HEAD`).stdout.trim();
-    if(!isBranchAndTagValidated) {
+    if (!isEnvValidated) {
+      const { message: changesCommittedMessage, isValid: changesCommitted } = await validateChangesCommitted();
+      if (!changesCommitted) {
+        throw new Error(changesCommittedMessage);
+      }
       const validateBranchAndTagResponse = await validateBranchAndTag(branch, tag, config);
       if (!validateBranchAndTagResponse.isValid) {
         throw new Error(validateBranchAndTagResponse.message);
       }
       else {
         const tagExists = (await validateTagExists(tag)).isValid;
-        if(tagExists) {
+        if (tagExists) {
           throw new Error(`Tag ${tag} already exists`);
         }
       }
-    }
-    if(!isPulled) {
       await pullLatest();
     }
-    
-    if(force) {
+
+    if (force) {
       await createVersion(tag, force); // Force version creation without confirmation
     }
     else {
-      const createVersionInput = await confirm({message: `Create version: ${tag} ?`});
+      const createVersionInput = await confirm({ message: `Create version: ${tag} ?` });
       if (createVersionInput) {
         await createVersion(tag, force);
       } else {
@@ -105,7 +95,7 @@ const set = async (tag: string, force?: boolean, isBranchAndTagValidated?: boole
       }
     }
   }
-  catch(error) {
+  catch (error) {
     handleError(error as Error, 'Setting Version');
     process.exit(1);
   }
