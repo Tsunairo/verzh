@@ -5,7 +5,7 @@ import { VersionConfig } from '../utils/types';
 import { validateCommandBranch, validateBumpType, validateChangesCommitted } from '../utils/validators';
 import { handleError, pullLatest } from '../utils/helpers';
 import set from './set';
-import { select } from '@inquirer/prompts';
+import { confirm, select } from '@inquirer/prompts';
 import getConfig from './getConfig';
 
 
@@ -73,9 +73,10 @@ const bump = async (type?: string, force?: boolean): Promise<void> => {
   try {
     config = await getConfig();
 
-    if(!force) {
+    if (!force) {
       const { message: changesCommittedMessage, isValid: changesCommitted } = await validateChangesCommitted();
-      if (!changesCommitted) {
+      const continueResponse = await confirm({ message: "There are uncommitted changes. Continue?" });
+      if (!continueResponse) {
         throw new Error(changesCommittedMessage);
       }
     }
