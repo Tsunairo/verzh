@@ -73,9 +73,11 @@ const bump = async (type?: string, force?: boolean): Promise<void> => {
   try {
     config = await getConfig();
 
-    const { message: changesCommittedMessage, isValid: changesCommitted } = await validateChangesCommitted();
-    if (!changesCommitted) {
-      throw new Error(changesCommittedMessage);
+    if(!force) {
+      const { message: changesCommittedMessage, isValid: changesCommitted } = await validateChangesCommitted();
+      if (!changesCommitted) {
+        throw new Error(changesCommittedMessage);
+      }
     }
     let branch: string = (await $`git rev-parse --abbrev-ref HEAD`).stdout.trim();
     const validateBranchResponse = await validateCommandBranch(branch, config);
