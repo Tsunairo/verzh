@@ -1,15 +1,13 @@
-#!/usr/bin/env zx
-
 import { $ } from 'zx';
 import { VersionConfig } from '../utils/types';
 import { validateCommandBranch, validateBumpType, validateChangesCommitted } from '../utils/validators';
-import { handleError, pullLatest } from '../utils/helpers';
+import { handleError, performPreScripts, pullLatest } from '../utils/helpers';
 import set from './set';
 import { confirm, select } from '@inquirer/prompts';
 import getConfig from './getConfig';
 
 
-$.verbose = false;
+$.quiet = true;
 
 // Initialize with default values
 let config: VersionConfig = {
@@ -74,6 +72,9 @@ const bump = async (type?: string, force?: boolean): Promise<void> => {
     config = await getConfig();
 
     if (!force) {
+      if (config.preScript) {
+        await performPreScripts(config);
+      }
       const { message: changesCommittedMessage, isValid: changesCommitted } = await validateChangesCommitted();
       const continueResponse = await confirm({ message: "There are uncommitted changes. Continue?" });
       if (!continueResponse) {

@@ -3,6 +3,8 @@
 import { Command } from 'commander';
 import * as fs from 'fs';
 import { bump, init, set, push, getConfig } from './commands';
+import { generateReleaseNotesTemplate } from './utils/helpers';
+import { editor } from '@inquirer/prompts';
 
 const path = require('path');
 const version = JSON.parse(fs.readFileSync(path.join(__dirname, '../package.json'), 'utf8')).version;
@@ -51,6 +53,13 @@ program.command('current')
   .action(async () => {
     const config = await getConfig();
     console.log(config.current);
+    const releaseNotesTemplate = await generateReleaseNotesTemplate(config.current, config.precededBy, config.remote);
+    const releaseNotes = await editor({
+      message: 'Release notes',
+      default: releaseNotesTemplate,
+      postfix: ".md",
+    });
+    console.log(releaseNotes);
   });
 
 program.command('preceded')

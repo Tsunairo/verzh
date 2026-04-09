@@ -1,5 +1,3 @@
-#!/usr/bin/env zx
-
 import { chalk, echo, spinner, $ } from 'zx';
 import { VersionConfig } from '../utils/types';
 import { validateTagExists } from '../utils/validators';
@@ -7,7 +5,7 @@ import { handleError } from '../utils/helpers';
 import { confirm } from '@inquirer/prompts';
 import getConfig from './getConfig';
 
-$.verbose = false;
+$.quiet = true;
 
 // Initialize with default values
 let config: VersionConfig = {
