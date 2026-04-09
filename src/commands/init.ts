@@ -1,8 +1,6 @@
-#!/usr/bin/env zx
-
 import { chalk, echo, fs } from 'zx';
 import { Question, VersionConfig } from '../utils/types';
-import { validateTagExists, validateGit, validateTagStructure, validatePreReleaseName, validateProjectName, validateChangesCommitted } from '../utils/validators';
+import { validateTagExists, validateGit, validateTagStructure, validatePreReleaseName, validateProjectName, validateChangesCommitted, validatePreScript } from '../utils/validators';
 import { fetchGitBranches, fetchGitRemotes, handleError } from '../utils/helpers';
 import set from './set';
 import { input, search, confirm } from '@inquirer/prompts';
@@ -146,6 +144,19 @@ const updatePackageJsonQuestion: Question = {
   }
 };
 
+
+const preScriptQuestion: Question = {
+  name: 'name',
+  prompt: async () => {
+    const response = (await input({ message: 'Enter a pre script that will be performed before setting a version. (optional)', required: false })).trim();
+    const validatePreScriptResponse = validatePreScript(response);
+    if (!validatePreScriptResponse.isValid) {
+      throw Error(validatePreScriptResponse.message);
+    }
+    return response;
+  }
+};
+
 const questions: Question[] = [
   projectNameQuestion,
   currentVersionQuestion,
@@ -153,7 +164,8 @@ const questions: Question[] = [
   preReleaseBranchesQuestion,
   remoteQuestion,
   autoPushToRemoteQuestion,
-  updatePackageJsonQuestion
+  updatePackageJsonQuestion,
+  preScriptQuestion
 ];
 
 const init = async () => {

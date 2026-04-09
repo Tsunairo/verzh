@@ -1,5 +1,3 @@
-#!/usr/bin/env zx
-
 import { $ } from 'zx';
 import { ValidationResponse, VersionConfig } from './types';
 
@@ -18,7 +16,7 @@ export const validateTagExists = async (tag: string): Promise<ValidationResponse
 };
 
 export const validateTagStructure = async (tag: string): Promise<ValidationResponse> => {
-  if(tag) {
+  if (tag) {
     const semverRegex = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/;
     if (!semverRegex.test(tag)) {
       return {
@@ -50,15 +48,42 @@ export const validateProjectName = (projectName: string): ValidationResponse => 
   };
 };
 
+export const validatePreScript = (preScript: any): ValidationResponse => {
+  if (preScript) {
+    if (typeof preScript === "string") {
+      if (preScript.length > 0) {
+        return {
+          isValid: true
+        };
+      }
+      else {
+        return {
+          isValid: false,
+          message: `pre scripts cannot be an empty string`
+        };
+      }
+    }
+    else {
+      return {
+        isValid: false,
+        message: `pre scripts must be a string`
+      };
+    }
+  }
+  return {
+    isValid: true
+  }
+};
+
 export const validatePreReleases = async (preReleases: Record<string, string>): Promise<ValidationResponse[]> => {
-  let validationResponses:ValidationResponse[] = [];
+  let validationResponses: ValidationResponse[] = [];
   const preReleaseBranches = Object.keys(preReleases);
   const preReleaseNames = Object.values(preReleases);
 
   await Promise.all(Object.entries(preReleases).map(async ([preReleaseBranch, preReleaseName]) => {
     const validateBranchResponse = await validatePreReleaseBranch(preReleaseBranch, preReleaseBranches.filter(prb => prb !== preReleaseName));
     const validatePreReleaseNameResponse = validatePreReleaseName(preReleaseName, preReleaseNames.filter(prn => prn !== preReleaseName));
-  
+
     validationResponses = [...validationResponses, validateBranchResponse, validatePreReleaseNameResponse];
   }));
 
@@ -78,7 +103,7 @@ export const validatePreReleaseName = (name: string, otherNames: string[]): Vali
       message: `Pre-release name "${name}" can only contain alphanumeric characters, dots, underscores, and hyphens.`
     };
   }
-  if(otherNames.includes(name)) {
+  if (otherNames.includes(name)) {
     return {
       isValid: false,
       message: `Pre-release name "${name}" already defined elswhere.`
@@ -91,8 +116,8 @@ export const validatePreReleaseName = (name: string, otherNames: string[]): Vali
 
 export const validatePreReleaseBranch = async (branch: string, otherBranches: string[]): Promise<ValidationResponse> => {
   const validateBranchResponse = await validateBranchExists(branch);
-  if(validateBranchResponse.isValid) {
-    if(otherBranches.includes(branch)) {
+  if (validateBranchResponse.isValid) {
+    if (otherBranches.includes(branch)) {
       return {
         isValid: false,
         message: `Pre-release branch "${branch}" already defined elswhere.`
@@ -124,19 +149,19 @@ export const validateBranchExists = async (branch: string): Promise<ValidationRe
 
 export const validateCommandBranch = async (branch: string, config: VersionConfig): Promise<ValidationResponse> => {
   const validateBranchResponse = await validateBranchExists(branch);
-  if(validateBranchResponse.isValid) {
+  if (validateBranchResponse.isValid) {
     const releaseBranch = config.releaseBranch;
     const preReleaseBranches = Object.keys(config.preReleaseBranches);
     const validBranches = [releaseBranch, ...preReleaseBranches];
-    
-    if(!validBranches.includes(branch)) {
-      if(branch !== releaseBranch) {
+
+    if (!validBranches.includes(branch)) {
+      if (branch !== releaseBranch) {
         return {
           isValid: false,
           message: `Branch ${branch} is not valid for this command. Valid branch is: ${releaseBranch}`
         };
       }
-      else if(!preReleaseBranches.includes(branch)) {
+      else if (!preReleaseBranches.includes(branch)) {
         return {
           isValid: false,
           message: `Branch ${branch} is not valid for this command. Valid branches are: [${preReleaseBranches.join(", ")}]`
@@ -158,17 +183,17 @@ export const validateCommandBranch = async (branch: string, config: VersionConfi
 
 export const validateBranchAndTag = async (branch: string, tag: string, config: VersionConfig): Promise<ValidationResponse> => {
   const validateBranchResponse = await validateCommandBranch(branch, config);
-  if(validateBranchResponse.isValid) {
-    const validateTagResponse= await validateTagStructure(tag);
-    if(validateTagResponse.isValid) {
+  if (validateBranchResponse.isValid) {
+    const validateTagResponse = await validateTagStructure(tag);
+    if (validateTagResponse.isValid) {
       const tagSections = tag.split("-");
-      if(tagSections.length === 1 && config.preReleaseBranches[branch]) {
+      if (tagSections.length === 1 && config.preReleaseBranches[branch]) {
         return {
           isValid: false,
           message: 'Tag cannot be used in pre-release branch'
         }
       }
-      else if(tagSections.length > 1 && config.releaseBranch) {
+      else if (tagSections.length > 1 && config.releaseBranch) {
         return {
           isValid: false,
           message: 'Tag cannot be used in release branch'
@@ -187,7 +212,7 @@ export const validateBranchAndTag = async (branch: string, tag: string, config: 
 
 export const validateBumpBranchAndType = async (branch: string, type: string, verConfig: VersionConfig): Promise<ValidationResponse> => {
   const validateBranchResponse = await validateCommandBranch(branch, verConfig);
-  if(!validateBranchResponse.isValid) {
+  if (!validateBranchResponse.isValid) {
     return validateBranchResponse;
   }
   else {
@@ -197,7 +222,7 @@ export const validateBumpBranchAndType = async (branch: string, type: string, ve
         message: `Invalid bump type: ${type}. Must be one of MAJOR, MINOR, PATCH, PRE-RELEASE.`
       };
     }
-    if(branch === verConfig.releaseBranch && type === "PRE-RELEASE") {
+    if (branch === verConfig.releaseBranch && type === "PRE-RELEASE") {
       return {
         isValid: false,
         message: "Pre-release type cannot be used in the release branch."
@@ -217,7 +242,7 @@ export const validateBumpBranchAndType = async (branch: string, type: string, ve
 };
 
 export const validateAutoPushToRemote = (autoPushToRemote: boolean): ValidationResponse => {
-  if(typeof autoPushToRemote !== 'boolean') {
+  if (typeof autoPushToRemote !== 'boolean') {
     return {
       isValid: false,
       message: "autoPushToRemote can only be true or false"
@@ -229,7 +254,7 @@ export const validateAutoPushToRemote = (autoPushToRemote: boolean): ValidationR
 };
 
 export const validateUpdatePackageJson = (updatePackageJson: boolean): ValidationResponse => {
-  if(typeof updatePackageJson !== 'boolean') {
+  if (typeof updatePackageJson !== 'boolean') {
     return {
       isValid: false,
       message: "updatePackageJson can only be true or false"
@@ -247,7 +272,7 @@ export const validateBumpType = (type: string, branch: string, verConfig: Versio
       message: `Invalid type: ${type}. Must be one of MAJOR, MINOR, PATCH, PRE-RELEASE.`
     };
   }
-  if(branch === verConfig.releaseBranch && type === "PRE-RELEASE") {
+  if (branch === verConfig.releaseBranch && type === "PRE-RELEASE") {
     return {
       isValid: false,
       message: "Pre-release type cannot be used in the release branch."
@@ -272,7 +297,7 @@ export const validateConfig = async (config: VersionConfig): Promise<ValidationR
       missingFields.push(field);
     }
   }
-  if(missingFields.length > 0) {
+  if (missingFields.length > 0) {
     return [{
       isValid: false,
       message: `Missing required fields in version config: ${missingFields.join(', ')}`
@@ -284,13 +309,14 @@ export const validateConfig = async (config: VersionConfig): Promise<ValidationR
       validateTagStructure(config.current),// check
       validateTagStructure(config.precededBy),
       await validateCommandBranch(config.releaseBranch, config),
-      validateRemote(config.remote), 
+      validateRemote(config.remote),
       validateAutoPushToRemote(config.autoPushToRemote),
       validateUpdatePackageJson(config.updatePackageJson),
       ...(await validatePreReleases(config.preReleaseBranches)),
+      validatePreScript(config.preScript),
     ])).filter(validationResponse => validationResponse.isValid);
 
-    return invalidResponses.length > 0 ? invalidResponses : [{isValid: true}];
+    return invalidResponses.length > 0 ? invalidResponses : [{ isValid: true }];
   }
 };
 
@@ -338,12 +364,12 @@ export const validateChangesCommitted = async (): Promise<ValidationResponse> =>
     const { stdout: stagedChanges } = await $`git diff --cached --quiet || echo "staged"`;
     const { stdout: unstagedChanges } = await $`git diff --quiet || echo "unstaged"`;
     changesCommitted = !(!!stagedChanges || !!unstagedChanges);
-    
+
   } catch (error) {
     // Git commands might throw if there are changes
     changesCommitted = false;
   }
-  if(!changesCommitted) {
+  if (!changesCommitted) {
     return { isValid: false, message: 'There are changes that have not been committed. Commit or stash them before running this command.' };
   }
   return { isValid: true };

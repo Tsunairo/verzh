@@ -7,6 +7,7 @@ export interface VersionConfig {
   autoPushToRemote: boolean;
   updatePackageJson: boolean;
   remote: string;
+  preScript?: string; // 
 }
 
 export type Question = {
@@ -28,12 +29,6 @@ interface VersionParts {
 export interface ValidationResponse {
   isValid: boolean;
   message?: string;
-}
-
-export interface GitCommandOutput {
-  stdout: string;    // Standard output
-  stderr: string;    // Error output
-  exitCode: number;  // 0 for success, non-zero for failure
 }
 
 export type PromptType = 'input' | 'select' | 'confirm' | 'search';

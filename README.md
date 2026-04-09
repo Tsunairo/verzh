@@ -1,13 +1,12 @@
 # verzh
 
-`verzh` is a simple CLI tool for managing semantic versioning and git tagging in your projects. It helps automate version bumps, tagging, and pushing releases, making your release workflow more reliable and efficient.
+`verzh` is a simple CLI tool for managing semantic versioning for your git project.
 
 ## Features
 
-- Bump version numbers (major, minor, patch, pre-release)
-- Create annotated git tags for each release
+- Bump version numbers (major, minor, patch, pre-release) by creating git tags
+- Push tags to your remote repository
 - Push changes and tags to your remote repository
-- Interactive prompts to confirm actions and handle uncommitted changes
 
 ## 🔧 Usage
 

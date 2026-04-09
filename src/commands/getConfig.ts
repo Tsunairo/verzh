@@ -1,11 +1,9 @@
-#!/usr/bin/env zx
-
 import { $, fs } from 'zx';
 import { handleError } from '../utils/helpers';
 import { validateConfig, validateGit } from '../utils/validators';
 import { ValidationResponse, VersionConfig } from '../utils/types';
 
-$.verbose = false
+$.quiet = true
 const configPath = "verzh.config.json";
 
 const getConfig = async (isValidated?: boolean) => {
