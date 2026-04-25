@@ -1,6 +1,6 @@
 {
   "name": "verzh",
-  "version": "1.0.21-alpha.1",
+  "version": "1.0.21-alpha.2",
   "description": "Versioning tool for managing project versions and releases",
   "dependencies": {
     "@inquirer/prompts": "^8.0.2",
