@@ -1,14 +1,13 @@
-#!/usr/bin/env zx
-
 import { chalk, echo, spinner, fs, $ } from 'zx';
 import { VersionConfig } from '../utils/types';
 import { validateTagExists, validateBranchAndTag, validateChangesCommitted } from '../utils/validators';
-import { handleError, pullLatest } from '../utils/helpers';
+import { handleError, performPreScripts, pullLatest } from '../utils/helpers';
 import push from './push';
 import { confirm } from '@inquirer/prompts';
 import getConfig from './getConfig';
+import { error } from 'console';
 
-$.verbose = false;
+$.quiet = true;
 const configPath = "verzh.config.json";
 
 // Initialize with default values
@@ -24,6 +23,7 @@ let config: VersionConfig = {
 };
 
 const createVersion = async (tag: string, force?: boolean): Promise<void> => {
+
   if (config.updatePackageJson) {
     try {
       const packageJsonPath = 'package.json';
@@ -52,19 +52,24 @@ const createVersion = async (tag: string, force?: boolean): Promise<void> => {
     }
   });
   if (spinnerError) {
-    handleError(spinnerError, "Pushing Version");
+    handleError(spinnerError, "Setting Version");
     return;
   }
   echo(chalk.greenBright(`Version ${tag} created 👍✅!`));
-  await push(tag, force, true);
+
+  if(config.remote !== ''){
+    await push(tag, force, true);
+  }
 };
 
 const set = async (tag: string, force?: boolean, isEnvValidated?: boolean): Promise<void> => {
   try {
-    
     config = await getConfig(isEnvValidated);
     let branch: string = (await $`git rev-parse --abbrev-ref HEAD`).stdout.trim();
     if (!isEnvValidated) {
+      if (config.preScript) {
+        await performPreScripts(config);
+      }
       const { message: changesCommittedMessage, isValid: changesCommitted } = await validateChangesCommitted();
       if (!changesCommitted) {
         const continueResponse = await confirm({ message: "There are uncommitted changes. Continue?" });
@@ -82,7 +87,10 @@ const set = async (tag: string, force?: boolean, isEnvValidated?: boolean): Prom
           throw new Error(`Tag ${tag} already exists`);
         }
       }
-      await pullLatest();
+
+      if (config.remote !== '') {
+        await pullLatest();
+      }
     }
 
     if (force) {

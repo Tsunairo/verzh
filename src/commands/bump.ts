@@ -1,15 +1,13 @@
-#!/usr/bin/env zx
-
 import { $ } from 'zx';
-import { VersionConfig } from '../utils/types';
+import { VersionConfig, VersionType } from '../utils/types';
 import { validateCommandBranch, validateBumpType, validateChangesCommitted } from '../utils/validators';
-import { handleError, pullLatest } from '../utils/helpers';
+import { handleError, performPreScripts, pullLatest } from '../utils/helpers';
 import set from './set';
 import { confirm, select } from '@inquirer/prompts';
 import getConfig from './getConfig';
 
 
-$.verbose = false;
+$.quiet = true;
 
 // Initialize with default values
 let config: VersionConfig = {
@@ -23,57 +21,49 @@ let config: VersionConfig = {
   remote: 'origin'
 };
 
-const createNewTag = (branch: string, type: string) => {
+const createNewTag = (branch: string, type: VersionType) => {
   let currentTag = config.current.split("-")[0] ?? "1.0.0";
   let [major, minor, patch] = currentTag.split(".").map(Number);
 
   let preRelease: string | undefined;
   let preReleaseName: string | undefined;
   let preReleaseNum: number | undefined;
-
-  if (branch !== config.releaseBranch) {
-    preRelease = config.current.split("-").filter((_, index) => index > 0).join("-") || branch.split("/").join(".") + ".0";
-    preReleaseName = preRelease.split(".").filter((_, index, array) => index < array.length - 1).join(".");
-    preReleaseNum = Number(preRelease.split(".")[preRelease.split(".").length - 1]);
+  
+  if (type === "MAJOR") {
+    major++;
+    minor = 0;
+    patch = 0;
   }
-
-  if (branch === config.releaseBranch) {
-    if (type === "MAJOR") {
-      major++;
-      minor = 0;
-      patch = 0;
-    }
-    else if (type === "MINOR") {
-      minor++;
-      patch = 0;
-    }
-    else if (type === "PATCH") {
-      patch++;
-    }
+  else if (type === "MINOR") {
+    minor++;
+    patch = 0;
+  }
+  else if (type === "PATCH") {
+    patch++;
   }
   else {
-    if (preRelease) {
-      preReleaseNum = (preReleaseNum ?? 0) + 1;
-      preRelease = `${preReleaseName}.${preReleaseNum}`;
-    } else {
-      if (branch !== config.releaseBranch) {
-        preReleaseNum = 1;
-        preReleaseName = branch.split("/").join(".");
-        preRelease = `${preReleaseName}.${preReleaseNum}`;
-      }
+    preReleaseName = config.preReleaseBranches[branch];
+    if(config.current.includes(`-${preReleaseName}.`)){
+      preReleaseNum = Number(config.current.split(`-${preReleaseName}.`)[1].split(".")[0]) + 1;
     }
+    else {
+      preReleaseNum = 1;
+    }
+    preRelease = `${preReleaseName}.${preReleaseNum}`;
   }
-
-  const newTag = `${major}.${minor}.${patch}${preRelease ? "-" + preRelease : ""}`;
+  
+  const newTag = `${major}.${minor}.${patch}${preRelease ? "-" + preRelease : ""}`;  
   return newTag;
 };
 
-
-const bump = async (type?: string, force?: boolean): Promise<void> => {
+const bump = async (type?: VersionType, force?: boolean): Promise<void> => {
   try {
     config = await getConfig();
 
     if (!force) {
+      if (config.preScript) {
+        await performPreScripts(config);
+      }
       const { message: changesCommittedMessage, isValid: changesCommitted } = await validateChangesCommitted();
       const continueResponse = await confirm({ message: "There are uncommitted changes. Continue?" });
       if (!continueResponse) {
@@ -85,7 +75,7 @@ const bump = async (type?: string, force?: boolean): Promise<void> => {
     if (validateBranchResponse.isValid) {
       if (!type) {
         if (config.preReleaseBranches[branch]) {
-          type = "PRE_RELEASE";
+          type = "PRE-RELEASE";
         }
         else {
           if (config.releaseBranch === branch) {
@@ -100,20 +90,18 @@ const bump = async (type?: string, force?: boolean): Promise<void> => {
         }
       }
       else {
-        type = type.toUpperCase();
         const validateBumpTypeResponse = validateBumpType(type, branch, config);
         if (!validateBumpTypeResponse.isValid) {
           throw new Error(validateBumpTypeResponse.message);
-        }
-        else {
-          type = type.toUpperCase();
         }
       }
     }
     else {
       throw new Error(validateBranchResponse.message);
     }
-    await pullLatest();
+    if(config.remote !== ''){
+      await pullLatest();
+    }
 
     const newTag = createNewTag(branch, type);
 

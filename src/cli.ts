@@ -3,6 +3,8 @@
 import { Command } from 'commander';
 import * as fs from 'fs';
 import { bump, init, set, push, getConfig } from './commands';
+import { generateReleaseNotesTemplate } from './utils/helpers';
+import { editor } from '@inquirer/prompts';
 
 const path = require('path');
 const version = JSON.parse(fs.readFileSync(path.join(__dirname, '../package.json'), 'utf8')).version;
@@ -27,7 +29,10 @@ program.command('bump')
   .option('-t, --type <type>', 'bump type (major, minor, patch, pre-release)')
   .option('-f, --force', 'ignore confirmation prompts and force version creation')
   .action(async (options) => {
-    await bump(options.type, options.force);
+
+    const type = options.type ? options.type.toUpperCase() : null;
+
+    await bump(type, options.force);
   });
 
 program.command('set')
@@ -50,7 +55,7 @@ program.command('current')
   .description('Get current version')
   .action(async () => {
     const config = await getConfig();
-    console.log(config.current);
+    console.log(config.current)
   });
 
 program.command('preceded')

@@ -1,11 +1,9 @@
-#!/usr/bin/env zx
-
 import { $, fs } from 'zx';
 import { handleError } from '../utils/helpers';
 import { validateConfig, validateGit } from '../utils/validators';
 import { ValidationResponse, VersionConfig } from '../utils/types';
 
-$.verbose = false
+$.quiet = true
 const configPath = "verzh.config.json";
 
 const getConfig = async (isValidated?: boolean) => {
@@ -13,19 +11,9 @@ const getConfig = async (isValidated?: boolean) => {
   try {
     config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
     if (!isValidated) {
-
-      const validateConfigResponses = await validateConfig(config);
-      const validateGitResponse = await validateGit();
-      if (!validateConfigResponses.find(vcr => vcr.isValid) || !validateGitResponse.isValid) {
-        let invalidResponses: ValidationResponse[] = [];
-        if (validateConfigResponses.filter(vcr => !vcr.isValid).length > 0) {
-          invalidResponses = validateConfigResponses;
-        }
-        if (validateGitResponse.isValid) {
-          invalidResponses = [...invalidResponses, validateGitResponse];
-        }
-
-        throw new Error(invalidResponses.map(ir => ir.message).join('\n'));
+      const validateConfigResponse = await validateConfig(config);
+      if (!validateConfigResponse.isValid) {
+        throw new Error(validateConfigResponse.message);
       }
     }
   } catch (error) {

@@ -1,10 +1,12 @@
 {
   "name": "verzh",
-  "current": "1.0.21",
-  "precededBy": "1.0.20",
-  "preReleaseBranches": {},
+  "current": "1.0.21-alpha.2",
+  "precededBy": "1.0.21-alpha.1",
+  "preReleaseBranches": {
+    "test": "alpha"
+  },
   "releaseBranch": "main",
-  "autoPushToRemote": true,
+  "autoPushToRemote": false,
   "updatePackageJson": true,
   "remote": "origin"
 }

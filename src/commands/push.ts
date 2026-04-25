@@ -1,5 +1,3 @@
-#!/usr/bin/env zx
-
 import { chalk, echo, spinner, $ } from 'zx';
 import { VersionConfig } from '../utils/types';
 import { validateTagExists } from '../utils/validators';
@@ -7,7 +5,7 @@ import { handleError } from '../utils/helpers';
 import { confirm } from '@inquirer/prompts';
 import getConfig from './getConfig';
 
-$.verbose = false;
+$.quiet = true;
 
 // Initialize with default values
 let config: VersionConfig = {
@@ -24,7 +22,9 @@ let config: VersionConfig = {
 const push = async (tag: string, force?: boolean, isEnvValidated?: boolean) => {
   try {
     config = await getConfig(isEnvValidated);
-  
+    if(config.remote === ''){
+      throw new Error('Remote is not set');
+    }
     const validateTagExistsResponse = await validateTagExists(tag);
     if(!validateTagExistsResponse.isValid) {
       throw new Error(validateTagExistsResponse.message);
@@ -33,13 +33,10 @@ const push = async (tag: string, force?: boolean, isEnvValidated?: boolean) => {
     let pushChanges =config.autoPushToRemote;
     if (!config.autoPushToRemote) {
       if(!force) {
-        const pushInput = await confirm({message: `Push version ${tag}?`});
-        if (!pushInput) {
-          pushChanges = false;
-        }
+        pushChanges = await confirm({message: `Push version ${tag}?`});
       }
     }
-    if (pushChanges) {
+    if (pushChanges === true) {
       let spinnerError: Error | null = null;
       await spinner(chalk.blueBright(`Pushing version ${tag}...`), async () => {
         try {
@@ -61,7 +58,7 @@ const push = async (tag: string, force?: boolean, isEnvValidated?: boolean) => {
     }
   }
   catch(error) {
-    handleError(error as Error, 'Setting Version');
+    handleError(error as Error, 'Pushing Version');
     process.exit(1);
   }
   finally {
