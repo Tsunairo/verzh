@@ -19,7 +19,7 @@ jobs:
         run: npm install
       - name: Build project
         run: |
-          npm run compile
+          npm run build
           rm -rf src .github tsconfig.json verzh.config.json
       - name: publish package
         run: npm publish --access public

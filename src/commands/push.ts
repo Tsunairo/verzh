@@ -33,13 +33,10 @@ const push = async (tag: string, force?: boolean, isEnvValidated?: boolean) => {
     let pushChanges =config.autoPushToRemote;
     if (!config.autoPushToRemote) {
       if(!force) {
-        const pushInput = await confirm({message: `Push version ${tag}?`});
-        if (!pushInput) {
-          pushChanges = false;
-        }
+        pushChanges = await confirm({message: `Push version ${tag}?`});
       }
     }
-    if (pushChanges) {
+    if (pushChanges === true) {
       let spinnerError: Error | null = null;
       await spinner(chalk.blueBright(`Pushing version ${tag}...`), async () => {
         try {
