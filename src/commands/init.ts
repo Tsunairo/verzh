@@ -227,6 +227,10 @@ const init = async () => {
     echo(chalk.greenBright('Version configuration initialized successfully.'));
     const { isValid: tagExists } = await validateTagExists(config.current);
     if (!tagExists) {
+      const resp = await confirm({ message: `Create version ${config.current}?` });
+      if (!resp) {
+        process.exit(0);
+      }
       echo(chalk.greenBright(`Creating version ${config.current}`));
       await set(config.current, true, true);
     }

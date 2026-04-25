@@ -22,7 +22,9 @@ let config: VersionConfig = {
 const push = async (tag: string, force?: boolean, isEnvValidated?: boolean) => {
   try {
     config = await getConfig(isEnvValidated);
-  
+    if(config.remote === ''){
+      throw new Error('Remote is not set');
+    }
     const validateTagExistsResponse = await validateTagExists(tag);
     if(!validateTagExistsResponse.isValid) {
       throw new Error(validateTagExistsResponse.message);
@@ -59,7 +61,7 @@ const push = async (tag: string, force?: boolean, isEnvValidated?: boolean) => {
     }
   }
   catch(error) {
-    handleError(error as Error, 'Setting Version');
+    handleError(error as Error, 'Pushing Version');
     process.exit(1);
   }
   finally {

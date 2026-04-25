@@ -52,11 +52,14 @@ const createVersion = async (tag: string, force?: boolean): Promise<void> => {
     }
   });
   if (spinnerError) {
-    handleError(spinnerError, "Pushing Version");
+    handleError(spinnerError, "Setting Version");
     return;
   }
   echo(chalk.greenBright(`Version ${tag} created 👍✅!`));
-  await push(tag, force, true);
+
+  if(config.remote !== ''){
+    await push(tag, force, true);
+  }
 };
 
 const set = async (tag: string, force?: boolean, isEnvValidated?: boolean): Promise<void> => {
@@ -64,7 +67,7 @@ const set = async (tag: string, force?: boolean, isEnvValidated?: boolean): Prom
     config = await getConfig(isEnvValidated);
     let branch: string = (await $`git rev-parse --abbrev-ref HEAD`).stdout.trim();
     if (!isEnvValidated) {
-      if(config.preScript) {
+      if (config.preScript) {
         await performPreScripts(config);
       }
       const { message: changesCommittedMessage, isValid: changesCommitted } = await validateChangesCommitted();
@@ -84,7 +87,10 @@ const set = async (tag: string, force?: boolean, isEnvValidated?: boolean): Prom
           throw new Error(`Tag ${tag} already exists`);
         }
       }
-      await pullLatest();
+
+      if (config.remote !== '') {
+        await pullLatest();
+      }
     }
 
     if (force) {

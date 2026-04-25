@@ -42,20 +42,14 @@ const createNewTag = (branch: string, type: VersionType) => {
     patch++;
   }
   else {
-    if (Object.keys(config.preReleaseBranches).includes(branch)) {
-      // current version already a pre-release
-      preRelease = config.current.split("-").filter((_, index) => index > 0).join("-");
-      preReleaseName = preRelease.split(".").filter((_, index, array) => index < array.length - 1).join(".");
-      preReleaseNum = (Number(preRelease.split(".")[preRelease.split(".").length - 1]) + 1);
-      
-      preRelease = `${preReleaseName}.${preReleaseNum}`;
+    preReleaseName = config.preReleaseBranches[branch];
+    if(config.current.includes(`-${preReleaseName}.`)){
+      preReleaseNum = Number(config.current.split(`-${preReleaseName}.`)[1].split(".")[0]) + 1;
     }
     else {
-      // current version is not a pre-release
       preReleaseNum = 1;
-      preReleaseName = config.preReleaseBranches[branch];
-      preRelease = `${preReleaseName}.${preReleaseNum}`;
     }
+    preRelease = `${preReleaseName}.${preReleaseNum}`;
   }
   
   const newTag = `${major}.${minor}.${patch}${preRelease ? "-" + preRelease : ""}`;  
@@ -105,7 +99,9 @@ const bump = async (type?: VersionType, force?: boolean): Promise<void> => {
     else {
       throw new Error(validateBranchResponse.message);
     }
-    await pullLatest();
+    if(config.remote !== ''){
+      await pullLatest();
+    }
 
     const newTag = createNewTag(branch, type);
 

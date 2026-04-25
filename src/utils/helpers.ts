@@ -105,8 +105,6 @@ export async function generateReleaseNotesTemplate(currentTag: string, previousT
   return template
 }
 
-
-
 export const pullLatest = async () => {
   const remotes = await fetchGitRemotes();
   if (remotes.length > 0) {
