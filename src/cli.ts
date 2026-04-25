@@ -29,7 +29,10 @@ program.command('bump')
   .option('-t, --type <type>', 'bump type (major, minor, patch, pre-release)')
   .option('-f, --force', 'ignore confirmation prompts and force version creation')
   .action(async (options) => {
-    await bump(options.type, options.force);
+
+    const type = options.type ? options.type.toUpperCase() : null;
+
+    await bump(type, options.force);
   });
 
 program.command('set')
@@ -52,14 +55,7 @@ program.command('current')
   .description('Get current version')
   .action(async () => {
     const config = await getConfig();
-    console.log(config.current);
-    const releaseNotesTemplate = await generateReleaseNotesTemplate(config.current, config.precededBy, config.remote);
-    const releaseNotes = await editor({
-      message: 'Release notes',
-      default: releaseNotesTemplate,
-      postfix: ".md",
-    });
-    console.log(releaseNotes);
+    console.log(config.current)
   });
 
 program.command('preceded')

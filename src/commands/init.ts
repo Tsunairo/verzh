@@ -1,6 +1,6 @@
 import { chalk, echo, fs } from 'zx';
 import { Question, VersionConfig } from '../utils/types';
-import { validateTagExists, validateGit, validateTagStructure, validatePreReleaseName, validateProjectName, validateChangesCommitted, validatePreScript } from '../utils/validators';
+import { validateTagExists, validateGit, validateTagStructure, validatePreReleaseName, validateProjectName, validateChangesCommitted, validatePreScript, validateRepositoryHasRemote, validateConfig } from '../utils/validators';
 import { fetchGitBranches, fetchGitRemotes, handleError } from '../utils/helpers';
 import set from './set';
 import { input, search, confirm } from '@inquirer/prompts';
@@ -68,7 +68,7 @@ const preReleaseBranchesQuestion: Question = {
       const branches = (await fetchGitBranches()).filter(branch => branch !== config.releaseBranch && !Object.keys(config.preReleaseBranches).includes(branch));
       do {
         const preReleaseBranch = await search({
-          message: "Select a branch", source: async (term) => {
+          message: "Select a pre-release branch", source: async (term) => {
             const availableBranches = branches.filter(branch => !Object.keys(preReleases).includes(branch) && branch.includes(term ?? ''));
             return ['<Exit>', ...availableBranches].map(branch => ({
               name: branch,
@@ -79,13 +79,20 @@ const preReleaseBranchesQuestion: Question = {
         if (preReleaseBranch === '<Exit>') {
           break;
         }
-        let preReleaseName = (await input({ message: "Enter pre-release name" })).trim();
+        let preReleaseName = (await input({ message: "Enter pre-release name", required: true })).trim();
+        if(Object.values(preReleases).includes(preReleaseName)) {
+          echo(chalk.redBright("Pre-release name already exists"));
+          continue;
+        }
 
-        const validatePreReleaseNameResponse = validatePreReleaseName(preReleaseName, Object.values(preReleases));
+        const validatePreReleaseNameResponse = validatePreReleaseName(preReleaseName);
         if (!validatePreReleaseNameResponse.isValid) {
           echo(chalk.redBright(validatePreReleaseNameResponse.message));
           continue;
         }
+
+
+        
         preReleases = { ...preReleases, [preReleaseBranch + '']: preReleaseName };
         const confirmResponse = await confirm({ message: "Add another pre-release branch?" });
         if (!confirmResponse) {
@@ -101,6 +108,10 @@ const preReleaseBranchesQuestion: Question = {
 const remoteQuestion: Question = {
   name: 'remote',
   prompt: async () => {
+    const confirmResponse = await confirm({ message: "Push to remote?" });
+    if (!confirmResponse) {
+      return '';
+    }
     const remotes = await fetchGitRemotes();
     const response = await search({
       message: "Select remote", source: (async (term = '') => {
@@ -113,8 +124,14 @@ const remoteQuestion: Question = {
     return response;
   },
   preCondition: async () => {
-    const remotes = await fetchGitRemotes();
-    return remotes.length > 0;
+    const hasRemoteValidateResponse = await validateRepositoryHasRemote();
+    if (hasRemoteValidateResponse.isValid) {
+      const remotes = await fetchGitRemotes(); // find a way to return the remotes when prompt is called
+      return remotes.length > 0;
+    }
+    else {
+      return false;
+    }
   }
 };
 
@@ -126,8 +143,7 @@ const autoPushToRemoteQuestion: Question = {
     return response;
   },
   preCondition: async () => {
-    const isGitRepositoryResponse = await validateGit();
-    return isGitRepositoryResponse.isValid;
+    return config.remote !== '';
   }
 };
 
@@ -164,8 +180,8 @@ const questions: Question[] = [
   preReleaseBranchesQuestion,
   remoteQuestion,
   autoPushToRemoteQuestion,
-  updatePackageJsonQuestion,
-  preScriptQuestion
+  preScriptQuestion,
+  updatePackageJsonQuestion
 ];
 
 const init = async () => {
@@ -202,6 +218,10 @@ const init = async () => {
           continue;
         }
       } while (true);
+    }
+    const validateConfigResponse = await validateConfig(config);
+    if (validateConfigResponse.isValid) {
+      throw new Error(validateConfigResponse.message);
     }
     fs.writeFileSync('verzh.config.json', JSON.stringify(config, null, 2));
     echo(chalk.greenBright('Version configuration initialized successfully.'));

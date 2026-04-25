@@ -1,13 +1,17 @@
-export interface VersionConfig {
+
+export type ReleaseName = string;
+type BranchName = string;
+
+interface VersionConfig {
   name: string;
   current: string;
   precededBy: string;
   releaseBranch: string;
-  preReleaseBranches: Record<string, string>;
+  preReleaseBranches: Record<BranchName, ReleaseName>;
   autoPushToRemote: boolean;
   updatePackageJson: boolean;
   remote: string;
-  preScript?: string; // 
+  preScript?: string;
 }
 
 export type Question = {

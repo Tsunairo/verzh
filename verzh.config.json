@@ -1,0 +1,12 @@
+{
+  "name": "",
+  "current": "1.0.21-alpha.1",
+  "precededBy": "1.0.21-alpha.1",
+  "releaseBranch": "main",
+  "preReleaseBranches": {
+    "test": "alpha"
+  },
+  "autoPushToRemote": false,
+  "updatePackageJson": false,
+  "remote": ""
+}

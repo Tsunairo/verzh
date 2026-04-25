@@ -1,5 +1,6 @@
 import { $ } from 'zx';
-import { ValidationResponse, VersionConfig } from './types';
+import { ValidationResponse, VersionConfig, VersionType } from './types';
+import z from 'zod';
 
 export const validateTagExists = async (tag: string): Promise<ValidationResponse> => {
   try {
@@ -37,10 +38,10 @@ export const validateTagStructure = async (tag: string): Promise<ValidationRespo
 };
 
 export const validateProjectName = (projectName: string): ValidationResponse => {
-  if (!/^[a-zA-Z0-9._-]+$/.test(projectName)) {
+  if (z.string().min(1).regex(/^[a-zA-Z0-9._-]+$/).safeParse(projectName).error) {
     return {
-      message: 'Project name can only contain alphanumeric characters, dots, underscores, and hyphens.',
-      isValid: false
+      isValid: false,
+      message: z.string().min(1).regex(/^[a-zA-Z0-9._-]+$/).safeParse(projectName).error?.message
     };
   }
   return {
@@ -50,18 +51,11 @@ export const validateProjectName = (projectName: string): ValidationResponse => 
 
 export const validatePreScript = (preScript: any): ValidationResponse => {
   if (preScript) {
-    if (typeof preScript === "string") {
-      if (preScript.length > 0) {
-        return {
-          isValid: true
-        };
-      }
-      else {
-        return {
-          isValid: false,
-          message: `pre scripts cannot be an empty string`
-        };
-      }
+    if (z.string().min(1).safeParse(preScript).error) {
+      return {
+        isValid: false,
+        message: z.string().min(1).safeParse(preScript).error?.message
+      };
     }
     else {
       return {
@@ -75,38 +69,45 @@ export const validatePreScript = (preScript: any): ValidationResponse => {
   }
 };
 
-export const validatePreReleases = async (preReleases: Record<string, string>): Promise<ValidationResponse[]> => {
-  let validationResponses: ValidationResponse[] = [];
-  const preReleaseBranches = Object.keys(preReleases);
-  const preReleaseNames = Object.values(preReleases);
+export const validatePreReleases = async (preReleases: Record<string, string>): Promise<ValidationResponse> => {
+  return await Promise.all(Object.entries(preReleases).map(async ([preReleaseBranch, preReleaseName]) => {
+    const validateBranchResponse = await validatePreReleaseBranch(preReleaseBranch);
+    const validatePreReleaseNameResponse = validatePreReleaseName(preReleaseName);
 
-  await Promise.all(Object.entries(preReleases).map(async ([preReleaseBranch, preReleaseName]) => {
-    const validateBranchResponse = await validatePreReleaseBranch(preReleaseBranch, preReleaseBranches.filter(prb => prb !== preReleaseName));
-    const validatePreReleaseNameResponse = validatePreReleaseName(preReleaseName, preReleaseNames.filter(prn => prn !== preReleaseName));
-
-    validationResponses = [...validationResponses, validateBranchResponse, validatePreReleaseNameResponse];
-  }));
-
-  return validationResponses.filter(vr => !vr.isValid);
+    if(!validateBranchResponse.isValid || !validatePreReleaseNameResponse.isValid) {
+      return {
+        isValid: false,
+        message: `Pre-release branch "${preReleaseBranch}" or name "${preReleaseName}" is not valid`
+      };
+    }
+    return {
+      isValid: true
+    };
+  })).then(results => {
+    if(results.every(result => result.isValid)) {
+      return {
+        isValid: true
+      };
+    }
+    else {
+      return {
+        isValid: false,
+        message: `Pre releases validation failed: ${results.filter(result => !result.isValid).map(result => result.message).join('.\n')}`
+      };
+    }
+  }).catch(error => {
+    return {
+      isValid: false,
+      message: error.message
+    };
+  });
 };
 
-export const validatePreReleaseName = (name: string, otherNames: string[]): ValidationResponse => {
-  if (!name) {
+export const validatePreReleaseName = (name: string): ValidationResponse => {
+  if (z.string().min(1).regex(/^[a-zA-Z0-9._-]+$/).safeParse(name).error) {
     return {
       isValid: false,
-      message: 'Pre-release name cannot be empty.'
-    };
-  }
-  if (!/^[a-zA-Z0-9._-]+$/.test(name)) {
-    return {
-      isValid: false,
-      message: `Pre-release name "${name}" can only contain alphanumeric characters, dots, underscores, and hyphens.`
-    };
-  }
-  if (otherNames.includes(name)) {
-    return {
-      isValid: false,
-      message: `Pre-release name "${name}" already defined elswhere.`
+      message: z.string().min(1).regex(/^[a-zA-Z0-9._-]+$/).safeParse(name).error?.message
     };
   }
   return {
@@ -114,22 +115,9 @@ export const validatePreReleaseName = (name: string, otherNames: string[]): Vali
   };
 };
 
-export const validatePreReleaseBranch = async (branch: string, otherBranches: string[]): Promise<ValidationResponse> => {
+export const validatePreReleaseBranch = async (branch: string): Promise<ValidationResponse> => {
   const validateBranchResponse = await validateBranchExists(branch);
-  if (validateBranchResponse.isValid) {
-    if (otherBranches.includes(branch)) {
-      return {
-        isValid: false,
-        message: `Pre-release branch "${branch}" already defined elswhere.`
-      };
-    }
-    return {
-      isValid: true
-    };
-  }
-  else {
-    return validateBranchResponse;
-  }
+  return validateBranchResponse;
 };
 
 export const validateBranchExists = async (branch: string): Promise<ValidationResponse> => {
@@ -265,11 +253,11 @@ export const validateUpdatePackageJson = (updatePackageJson: boolean): Validatio
   };
 };
 
-export const validateBumpType = (type: string, branch: string, verConfig: VersionConfig): ValidationResponse => {
-  if (!['MAJOR', 'MINOR', 'PATCH', 'PRE-RELEASE'].includes(type)) {
+export const validateBumpType = (type: VersionType, branch: string, verConfig: VersionConfig): ValidationResponse => {
+  if (z.enum(['MAJOR', 'MINOR', 'PATCH', 'PRE-RELEASE']).safeParse(type).error) {
     return {
       isValid: false,
-      message: `Invalid type: ${type}. Must be one of MAJOR, MINOR, PATCH, PRE-RELEASE.`
+      message: z.enum(['MAJOR', 'MINOR', 'PATCH', 'PRE-RELEASE']).safeParse(type).error?.message
     };
   }
   if (branch === verConfig.releaseBranch && type === "PRE-RELEASE") {
@@ -289,35 +277,63 @@ export const validateBumpType = (type: string, branch: string, verConfig: Versio
   };
 };
 
-export const validateConfig = async (config: VersionConfig): Promise<ValidationResponse[]> => {
-  const requiredFields = ['name', 'current', 'precededBy', 'releaseBranch', 'preReleaseBranches', 'autoPushToRemote', 'updatePackageJson', 'remote'] as const;
-  const missingFields: string[] = [];
-  for (const field of requiredFields) {
-    if (!Object.keys(config).includes(field)) {
-      missingFields.push(field);
-    }
+export const validateRepositoryHasRemote = async (): Promise<ValidationResponse> => {
+  const { stdout } = await $`git remote`;
+  if (stdout.trim()) {
+    return {
+      isValid: true
+    };
   }
-  if (missingFields.length > 0) {
-    return [{
-      isValid: false,
-      message: `Missing required fields in version config: ${missingFields.join(', ')}`
-    }];
-  }
-  else {
-    let invalidResponses = (await Promise.all([
-      validateProjectName(config.name),
-      validateTagStructure(config.current),// check
-      validateTagStructure(config.precededBy),
-      await validateCommandBranch(config.releaseBranch, config),
-      validateRemote(config.remote),
-      validateAutoPushToRemote(config.autoPushToRemote),
-      validateUpdatePackageJson(config.updatePackageJson),
-      ...(await validatePreReleases(config.preReleaseBranches)),
-      validatePreScript(config.preScript),
-    ])).filter(validationResponse => validationResponse.isValid);
+  return {
+    isValid: false,
+    message: 'Repository does not have any remote.'
+  };
+};
 
-    return invalidResponses.length > 0 ? invalidResponses : [{ isValid: true }];
+export const validateConfig = async (config: VersionConfig): Promise<ValidationResponse> => {
+  const configSchema = z.object({
+    name: z.string().min(1, 'Name is required'),
+    current: z.string().min(1, 'Current version is required'),
+    precededBy: z.string().min(1, 'Preceded by is required'),
+    releaseBranch: z.string().min(1, 'Release branch is required'),
+    preReleaseBranches: z.record(z.string(), z.string()),
+    autoPushToRemote: z.boolean(),
+    updatePackageJson: z.boolean(),
+    remote: z.string(),
+    preScript: z.string().optional()
+  });
+  const validateConfigResponse = configSchema.safeParse(config);
+  
+  if (!validateConfigResponse.success) {
+    return {
+      isValid: false,
+      message: validateConfigResponse.error.message
+    };
   }
+
+  const validateResponse = await Promise.all([
+    validateProjectName(config.name),
+    validateTagStructure(config.current),
+    validateTagStructure(config.precededBy),
+    await validateCommandBranch(config.releaseBranch, config),
+    validateRemote(config.remote),
+    validateAutoPushToRemote(config.autoPushToRemote),
+    validateUpdatePackageJson(config.updatePackageJson),
+    await validatePreReleases(config.preReleaseBranches),
+    validatePreScript(config.preScript),
+  ]).then(results => {
+    return {
+      isValid: results.every(result => result.isValid),
+      message: `Validation failed: ${results.filter(result => !result.isValid).map(result => result.message).join('.\n')}`
+    };
+  }).catch(error => {
+    return {
+      isValid: false,
+      message: error.message
+    };
+  });
+  
+  return validateResponse;
 };
 
 export const validateVersion = (version: string): ValidationResponse => {

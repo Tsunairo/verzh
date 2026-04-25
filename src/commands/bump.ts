@@ -1,5 +1,5 @@
 import { $ } from 'zx';
-import { VersionConfig } from '../utils/types';
+import { VersionConfig, VersionType } from '../utils/types';
 import { validateCommandBranch, validateBumpType, validateChangesCommitted } from '../utils/validators';
 import { handleError, performPreScripts, pullLatest } from '../utils/helpers';
 import set from './set';
@@ -21,53 +21,48 @@ let config: VersionConfig = {
   remote: 'origin'
 };
 
-const createNewTag = (branch: string, type: string) => {
+const createNewTag = (branch: string, type: VersionType) => {
   let currentTag = config.current.split("-")[0] ?? "1.0.0";
   let [major, minor, patch] = currentTag.split(".").map(Number);
 
   let preRelease: string | undefined;
   let preReleaseName: string | undefined;
   let preReleaseNum: number | undefined;
-
-  if (branch !== config.releaseBranch) {
-    preRelease = config.current.split("-").filter((_, index) => index > 0).join("-") || branch.split("/").join(".") + ".0";
-    preReleaseName = preRelease.split(".").filter((_, index, array) => index < array.length - 1).join(".");
-    preReleaseNum = Number(preRelease.split(".")[preRelease.split(".").length - 1]);
+  
+  if (type === "MAJOR") {
+    major++;
+    minor = 0;
+    patch = 0;
   }
-
-  if (branch === config.releaseBranch) {
-    if (type === "MAJOR") {
-      major++;
-      minor = 0;
-      patch = 0;
-    }
-    else if (type === "MINOR") {
-      minor++;
-      patch = 0;
-    }
-    else if (type === "PATCH") {
-      patch++;
-    }
+  else if (type === "MINOR") {
+    minor++;
+    patch = 0;
+  }
+  else if (type === "PATCH") {
+    patch++;
   }
   else {
-    if (preRelease) {
-      preReleaseNum = (preReleaseNum ?? 0) + 1;
+    if (Object.keys(config.preReleaseBranches).includes(branch)) {
+      // current version already a pre-release
+      preRelease = config.current.split("-").filter((_, index) => index > 0).join("-");
+      preReleaseName = preRelease.split(".").filter((_, index, array) => index < array.length - 1).join(".");
+      preReleaseNum = (Number(preRelease.split(".")[preRelease.split(".").length - 1]) + 1);
+      
       preRelease = `${preReleaseName}.${preReleaseNum}`;
-    } else {
-      if (branch !== config.releaseBranch) {
-        preReleaseNum = 1;
-        preReleaseName = branch.split("/").join(".");
-        preRelease = `${preReleaseName}.${preReleaseNum}`;
-      }
+    }
+    else {
+      // current version is not a pre-release
+      preReleaseNum = 1;
+      preReleaseName = config.preReleaseBranches[branch];
+      preRelease = `${preReleaseName}.${preReleaseNum}`;
     }
   }
-
-  const newTag = `${major}.${minor}.${patch}${preRelease ? "-" + preRelease : ""}`;
+  
+  const newTag = `${major}.${minor}.${patch}${preRelease ? "-" + preRelease : ""}`;  
   return newTag;
 };
 
-
-const bump = async (type?: string, force?: boolean): Promise<void> => {
+const bump = async (type?: VersionType, force?: boolean): Promise<void> => {
   try {
     config = await getConfig();
 
@@ -86,7 +81,7 @@ const bump = async (type?: string, force?: boolean): Promise<void> => {
     if (validateBranchResponse.isValid) {
       if (!type) {
         if (config.preReleaseBranches[branch]) {
-          type = "PRE_RELEASE";
+          type = "PRE-RELEASE";
         }
         else {
           if (config.releaseBranch === branch) {
@@ -101,13 +96,9 @@ const bump = async (type?: string, force?: boolean): Promise<void> => {
         }
       }
       else {
-        type = type.toUpperCase();
         const validateBumpTypeResponse = validateBumpType(type, branch, config);
         if (!validateBumpTypeResponse.isValid) {
           throw new Error(validateBumpTypeResponse.message);
-        }
-        else {
-          type = type.toUpperCase();
         }
       }
     }

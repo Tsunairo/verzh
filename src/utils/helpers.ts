@@ -128,7 +128,7 @@ export const performPreScripts = async (config: VersionConfig) => {
 
   await spinner(chalk.blueBright("Performing pre script, please wait"), async () => {
     try {
-      const process = await $`${config.preScript}`;
+      const process = await $`bash -c ${config.preScript}`;
       if (process.exitCode === 0) {
         isSuccess = true;
       }
