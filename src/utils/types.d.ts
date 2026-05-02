@@ -12,6 +12,9 @@ interface VersionConfig {
   updatePackageJson: boolean;
   remote: string;
   preScript?: string;
+  releaseNotes?: {
+    outputPath: string;
+  }
 }
 
 export type Question = {

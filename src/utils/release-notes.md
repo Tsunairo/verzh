@@ -2,10 +2,6 @@
 
 > Description
 
-## Upgrade Steps
-
-{upgrade-notes}
-
 ## Breaking Changes
 
 *
