@@ -160,7 +160,6 @@ const updatePackageJsonQuestion: Question = {
   }
 };
 
-
 const preScriptQuestion: Question = {
   name: 'name',
   prompt: async () => {
@@ -176,9 +175,9 @@ const preScriptQuestion: Question = {
 const questions: Question[] = [
   projectNameQuestion,
   currentVersionQuestion,
+  remoteQuestion,
   releaseBranchQuestion,
   preReleaseBranchesQuestion,
-  remoteQuestion,
   autoPushToRemoteQuestion,
   preScriptQuestion,
   updatePackageJsonQuestion

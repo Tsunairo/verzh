@@ -121,18 +121,34 @@ export const validatePreReleaseBranch = async (branch: string): Promise<Validati
 };
 
 export const validateBranchExists = async (branch: string): Promise<ValidationResponse> => {
-  const { stdout } = await $`git branch --list ${branch}`;
+  const { stdout: localBranches } = await $`git branch --list ${branch}`;
 
-  if (stdout.trim()) {
+  if (localBranches.trim()) {
     return {
       isValid: true
     };
-  } else {
+  }
+
+  // Exact remote-tracking name (e.g. origin/main)
+  const { stdout: remoteBranches } = await $`git branch -r --list ${branch}`;
+  if (remoteBranches.trim()) {
     return {
-      isValid: false,
-      message: `Branch ${branch} does not exist`
+      isValid: true
     };
   }
+
+  // Bare name that only exists on a remote (e.g. test -> origin/test)
+  const { stdout: remoteBranchesByName } = await $`git branch -r --list */${branch}`;
+  if (remoteBranchesByName.trim()) {
+    return {
+      isValid: true
+    };
+  }
+
+  return {
+    isValid: false,
+    message: `Branch ${branch} does not exist`
+  };
 };
 
 export const validateCommandBranch = async (branch: string, config: VersionConfig): Promise<ValidationResponse> => {

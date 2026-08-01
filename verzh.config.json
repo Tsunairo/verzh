@@ -1,7 +1,7 @@
 {
   "name": "verzh",
-  "current": "1.0.22",
-  "precededBy": "1.0.21-alpha.2",
+  "current": "1.0.23",
+  "precededBy": "1.0.22",
   "preReleaseBranches": {
     "test": "alpha"
   },
