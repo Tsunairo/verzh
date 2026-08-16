@@ -8,6 +8,7 @@ const configPath = "verzh.config.json";
 
 export const writeConfig = (config: VersionConfig) => {
   const { current, precededBy, ...fileConfig } = config;
+  delete (fileConfig as { name?: string }).name;
   fs.writeFileSync(configPath, JSON.stringify(fileConfig, null, 2));
 };
 

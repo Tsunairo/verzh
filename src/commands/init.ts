@@ -1,14 +1,12 @@
 import { chalk, echo, fs } from 'zx';
 import { Question, VersionConfig } from '../utils/types';
-import { validateTagExists, validateGit, validateTagStructure, validatePreReleaseName, validateProjectName, validateChangesCommitted, validatePreScript, validateRepositoryHasRemote, validateConfig } from '../utils/validators';
-import { fetchGitBranches, fetchGitRemotes, handleError } from '../utils/helpers';
+import { validateTagExists, validateGit, validateTagStructure, validatePreReleaseName, validateChangesCommitted, validatePreScript, validateRepositoryHasRemote, validateConfig } from '../utils/validators';
+import { fetchGitBranches, fetchGitRemotes, getLatestTag, handleError } from '../utils/helpers';
 import set from './set';
 import { writeConfig } from './getConfig';
 import { input, search, confirm } from '@inquirer/prompts';
-import path from 'path';
 
 const config: VersionConfig = {
-  name: '',
   current: '1.0.0',
   precededBy: '',
   releaseBranch: '',
@@ -16,19 +14,6 @@ const config: VersionConfig = {
   autoPushToRemote: false,
   updatePackageJson: false,
   remote: ''
-};
-
-const projectNameQuestion: Question = {
-  name: 'name',
-  prompt: async () => {
-    const currentFolder = path.basename(path.resolve());
-    const response = (await input({ message: 'Enter a project name', default: currentFolder })).trim();
-    const validateProjectNameResponse = validateProjectName(response);
-    if (!validateProjectNameResponse.isValid) {
-      throw Error(validateProjectNameResponse.message);
-    }
-    return response;
-  }
 };
 
 const currentVersionQuestion: Question = {
@@ -40,6 +25,20 @@ const currentVersionQuestion: Question = {
       throw new Error(validationResponse.message);
     }
     return response;
+  },
+  preCondition: async () => {
+    const latestTag = await getLatestTag();
+    if (!latestTag) {
+      return true;
+    }
+    const validationResponse = await validateTagStructure(latestTag);
+    if (!validationResponse.isValid) {
+      echo(chalk.yellowBright(`Latest git tag "${latestTag}" is not a valid version. Enter one manually.`));
+      return true;
+    }
+    config.current = latestTag;
+    echo(chalk.greenBright(`Using existing git tag ${latestTag} as current version.`));
+    return false;
   }
 };
 
@@ -162,7 +161,7 @@ const updatePackageJsonQuestion: Question = {
 };
 
 const preScriptQuestion: Question = {
-  name: 'name',
+  name: 'preScript',
   prompt: async () => {
     const response = (await input({ message: 'Enter a pre script that will be performed before setting a version. (optional)', required: false })).trim();
     const validatePreScriptResponse = validatePreScript(response);
@@ -174,7 +173,6 @@ const preScriptQuestion: Question = {
 };
 
 const questions: Question[] = [
-  projectNameQuestion,
   currentVersionQuestion,
   remoteQuestion,
   releaseBranchQuestion,

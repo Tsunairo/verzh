@@ -1,5 +1,4 @@
 {
-  "name": "verzh",
   "preReleaseBranches": {
     "test": "alpha"
   },

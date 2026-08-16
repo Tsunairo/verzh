@@ -11,7 +11,6 @@ $.quiet = true;
 
 // Initialize with default values
 let config: VersionConfig = {
-  name: '',
   current: '1.0.0',
   precededBy: '',
   releaseBranch: 'main',

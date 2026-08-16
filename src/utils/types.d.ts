@@ -3,7 +3,6 @@ export type ReleaseName = string;
 type BranchName = string;
 
 interface VersionConfig {
-  name: string;
   current: string;
   precededBy: string;
   releaseBranch: string;

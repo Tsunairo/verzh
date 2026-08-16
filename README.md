@@ -112,7 +112,6 @@ Edit `verzh.config.json` to set your release branch, remote, and other options. 
 
 ```json
 {
-  "name": "my-project",
   "releaseBranch": "main",
   "preReleaseBranches": {
     "develop": "alpha",

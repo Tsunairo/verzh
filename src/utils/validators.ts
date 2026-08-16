@@ -37,18 +37,6 @@ export const validateTagStructure = async (tag: string): Promise<ValidationRespo
   };
 };
 
-export const validateProjectName = (projectName: string): ValidationResponse => {
-  if (z.string().min(1).regex(/^[a-zA-Z0-9._-]+$/).safeParse(projectName).error) {
-    return {
-      isValid: false,
-      message: z.string().min(1).regex(/^[a-zA-Z0-9._-]+$/).safeParse(projectName).error?.message
-    };
-  }
-  return {
-    isValid: true
-  };
-};
-
 export const validatePreScript = (preScript: any): ValidationResponse => {
   if (!preScript) {
     return {
@@ -305,7 +293,7 @@ export const validateRepositoryHasRemote = async (): Promise<ValidationResponse>
 
 export const validateConfig = async (config: VersionConfig): Promise<ValidationResponse> => {
   const configSchema = z.object({
-    name: z.string().min(1, 'Name is required'),
+    name: z.string().optional(),
     current: z.string().optional(),
     precededBy: z.string().optional(),
     releaseBranch: z.string().min(1, 'Release branch is required'),
@@ -325,7 +313,6 @@ export const validateConfig = async (config: VersionConfig): Promise<ValidationR
   }
 
   const validateResponse = await Promise.all([
-    validateProjectName(config.name),
     await validateCommandBranch(config.releaseBranch, config),
     validateRemote(config.remote),
     validateAutoPushToRemote(config.autoPushToRemote),
