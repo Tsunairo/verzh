@@ -1,10 +1,15 @@
 import { $, fs } from 'zx';
-import { handleError } from '../utils/helpers';
-import { validateConfig, validateGit } from '../utils/validators';
-import { ValidationResponse, VersionConfig } from '../utils/types';
+import { applyGitVersionTags, handleError } from '../utils/helpers';
+import { validateConfig } from '../utils/validators';
+import { VersionConfig } from '../utils/types';
 
 $.quiet = true
 const configPath = "verzh.config.json";
+
+export const writeConfig = (config: VersionConfig) => {
+  const { current, precededBy, ...fileConfig } = config;
+  fs.writeFileSync(configPath, JSON.stringify(fileConfig, null, 2));
+};
 
 const getConfig = async (isValidated?: boolean) => {
   let config: VersionConfig;
@@ -16,6 +21,7 @@ const getConfig = async (isValidated?: boolean) => {
         throw new Error(validateConfigResponse.message);
       }
     }
+    config = await applyGitVersionTags(config);
   } catch (error) {
     handleError(error as Error, 'Loading Config');
     process.exit(1);

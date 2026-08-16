@@ -3,6 +3,7 @@ import { Question, VersionConfig } from '../utils/types';
 import { validateTagExists, validateGit, validateTagStructure, validatePreReleaseName, validateProjectName, validateChangesCommitted, validatePreScript, validateRepositoryHasRemote, validateConfig } from '../utils/validators';
 import { fetchGitBranches, fetchGitRemotes, handleError } from '../utils/helpers';
 import set from './set';
+import { writeConfig } from './getConfig';
 import { input, search, confirm } from '@inquirer/prompts';
 import path from 'path';
 
@@ -219,10 +220,10 @@ const init = async () => {
       } while (true);
     }
     const validateConfigResponse = await validateConfig(config);
-    if (validateConfigResponse.isValid) {
+    if (!validateConfigResponse.isValid) {
       throw new Error(validateConfigResponse.message);
     }
-    fs.writeFileSync('verzh.config.json', JSON.stringify(config, null, 2));
+    writeConfig(config);
     echo(chalk.greenBright('Version configuration initialized successfully.'));
     const { isValid: tagExists } = await validateTagExists(config.current);
     if (!tagExists) {

@@ -92,7 +92,7 @@ verzh push -t 1.0.0
 
 ### Current version
 
-- Displays the current version of the project based on the `verzh.config.json` file.
+- Displays the current version of the project based on the latest git tag.
 
 ```sh
 verzh current
@@ -100,7 +100,7 @@ verzh current
 
 ### Preceded version
 
-- Displays the version that precedes the current version based on the `verzh.config.json` file.
+- Displays the version that precedes the current version based on git tags.
 
 ```sh
 verzh preceded
@@ -112,8 +112,7 @@ Edit `verzh.config.json` to set your release branch, remote, and other options. 
 
 ```json
 {
-  "current": "1.0.0",
-  "precededBy": "",
+  "name": "my-project",
   "releaseBranch": "main",
   "preReleaseBranches": {
     "develop": "alpha",
@@ -125,6 +124,8 @@ Edit `verzh.config.json` to set your release branch, remote, and other options. 
   "remote": "origin"
 }
 ```
+
+`current` and `precededBy` are read from git tags (`git describe`), not stored in this file.
 
 For `preReleaseBranches` the key is the branch name and value is the name of the pre-release. This will create tags like `1.0.2-alpa.24`
 

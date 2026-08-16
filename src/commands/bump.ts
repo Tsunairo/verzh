@@ -1,7 +1,7 @@
 import { $ } from 'zx';
 import { VersionConfig, VersionType } from '../utils/types';
 import { validateCommandBranch, validateBumpType, validateChangesCommitted } from '../utils/validators';
-import { handleError, performPreScripts, pullLatest } from '../utils/helpers';
+import { applyGitVersionTags, handleError, performPreScripts, pullLatest } from '../utils/helpers';
 import set from './set';
 import { confirm, select } from '@inquirer/prompts';
 import getConfig from './getConfig';
@@ -101,6 +101,11 @@ const bump = async (type?: VersionType, force?: boolean): Promise<void> => {
     }
     if(config.remote !== ''){
       await pullLatest();
+      config = await applyGitVersionTags(config);
+    }
+
+    if (!config.current) {
+      throw new Error('No version tags found. Run `verzh init` or `verzh set -t <tag>` first.');
     }
 
     const newTag = createNewTag(branch, type);

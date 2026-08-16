@@ -1,14 +1,13 @@
 import { chalk, echo, spinner, fs, $ } from 'zx';
 import { VersionConfig } from '../utils/types';
 import { validateTagExists, validateBranchAndTag, validateChangesCommitted } from '../utils/validators';
-import { handleError, performPreScripts, pullLatest } from '../utils/helpers';
+import { applyGitVersionTags, handleError, performPreScripts, pullLatest } from '../utils/helpers';
 import push from './push';
 import { confirm } from '@inquirer/prompts';
 import getConfig from './getConfig';
 import { error } from 'console';
 
 $.quiet = true;
-const configPath = "verzh.config.json";
 
 // Initialize with default values
 let config: VersionConfig = {
@@ -41,11 +40,9 @@ const createVersion = async (tag: string, force?: boolean): Promise<void> => {
   }
   let spinnerError: Error | null = null;
   await spinner(chalk.blueBright("Creating version " + tag), async () => {
-    config = { ...config, current: tag, precededBy: config.current };
-    fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
     try {
       await $`git add .`;
-      await $`git commit -m"Version: ${tag}"`;
+      await $`git commit --allow-empty -m"Version: ${tag}"`;
       await $`git tag -a ${tag} -m "Version: ${tag}"`;
     } catch (error) {
       spinnerError = error as Error;
@@ -90,6 +87,7 @@ const set = async (tag: string, force?: boolean, isEnvValidated?: boolean): Prom
 
       if (config.remote !== '') {
         await pullLatest();
+        config = await applyGitVersionTags(config);
       }
     }
 

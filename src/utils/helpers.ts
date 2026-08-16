@@ -42,6 +42,38 @@ export async function fetchGitRemotes(): Promise<string[]> {
   }
 };
 
+export async function getLatestTag(): Promise<string> {
+  try {
+    const result = await $`git describe --tags --abbrev=0`;
+    return result.stdout.trim();
+  } catch {
+    return '';
+  }
+}
+
+export async function getPrecedingTag(currentTag: string): Promise<string> {
+  if (!currentTag) {
+    return '';
+  }
+  try {
+    const result = await $`git describe --tags --abbrev=0 ${currentTag + '^'}`;
+    return result.stdout.trim();
+  } catch {
+    return '';
+  }
+}
+
+export async function getVersionTagsFromGit(): Promise<{ current: string; precededBy: string }> {
+  const current = await getLatestTag();
+  const precededBy = await getPrecedingTag(current);
+  return { current, precededBy };
+}
+
+export async function applyGitVersionTags(config: VersionConfig): Promise<VersionConfig> {
+  const { current, precededBy } = await getVersionTagsFromGit();
+  return { ...config, current, precededBy };
+}
+
 export async function getGitLogsBetweenTags(tag1: string, tag2: string): Promise<string[]> {
 
   const result = await $`git log --oneline ${tag1}..${tag2}`;

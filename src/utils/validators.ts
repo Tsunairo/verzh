@@ -50,23 +50,20 @@ export const validateProjectName = (projectName: string): ValidationResponse => 
 };
 
 export const validatePreScript = (preScript: any): ValidationResponse => {
-  if (preScript) {
-    if (z.string().min(1).safeParse(preScript).error) {
-      return {
-        isValid: false,
-        message: z.string().min(1).safeParse(preScript).error?.message
-      };
-    }
-    else {
-      return {
-        isValid: false,
-        message: `pre scripts must be a string`
-      };
-    }
+  if (!preScript) {
+    return {
+      isValid: true
+    };
+  }
+  if (z.string().min(1).safeParse(preScript).error) {
+    return {
+      isValid: false,
+      message: 'pre scripts must be a string'
+    };
   }
   return {
     isValid: true
-  }
+  };
 };
 
 export const validatePreReleases = async (preReleases: Record<string, string>): Promise<ValidationResponse> => {
@@ -309,8 +306,8 @@ export const validateRepositoryHasRemote = async (): Promise<ValidationResponse>
 export const validateConfig = async (config: VersionConfig): Promise<ValidationResponse> => {
   const configSchema = z.object({
     name: z.string().min(1, 'Name is required'),
-    current: z.string().min(1, 'Current version is required'),
-    precededBy: z.string().min(1, 'Preceded by is required'),
+    current: z.string().optional(),
+    precededBy: z.string().optional(),
     releaseBranch: z.string().min(1, 'Release branch is required'),
     preReleaseBranches: z.record(z.string(), z.string()),
     autoPushToRemote: z.boolean(),
@@ -329,8 +326,6 @@ export const validateConfig = async (config: VersionConfig): Promise<ValidationR
 
   const validateResponse = await Promise.all([
     validateProjectName(config.name),
-    validateTagStructure(config.current),
-    validateTagStructure(config.precededBy),
     await validateCommandBranch(config.releaseBranch, config),
     validateRemote(config.remote),
     validateAutoPushToRemote(config.autoPushToRemote),
@@ -338,9 +333,13 @@ export const validateConfig = async (config: VersionConfig): Promise<ValidationR
     await validatePreReleases(config.preReleaseBranches),
     validatePreScript(config.preScript),
   ]).then(results => {
+    const failed = results.filter(result => !result.isValid);
+    if (failed.length === 0) {
+      return { isValid: true };
+    }
     return {
-      isValid: results.every(result => result.isValid),
-      message: `Validation failed: ${results.filter(result => !result.isValid).map(result => result.message).join('.\n')}`
+      isValid: false,
+      message: `Validation failed: ${failed.map(result => result.message).join('.\n')}`
     };
   }).catch(error => {
     return {
@@ -381,6 +380,9 @@ export const validateGit = async (): Promise<ValidationResponse> => {
 };
 
 export const validateRemote = async (remote: string): Promise<ValidationResponse> => {
+  if (!remote) {
+    return { isValid: true };
+  }
   try {
     await $`git remote get-url ${remote}`;
     return { isValid: true };
