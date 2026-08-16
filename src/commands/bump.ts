@@ -3,7 +3,7 @@ import { VersionConfig, VersionType } from '../utils/types';
 import { validateCommandBranch, validateBumpType, validateChangesCommitted } from '../utils/validators';
 import { applyGitVersionTags, handleError, performPreScripts, pullLatest } from '../utils/helpers';
 import set from './set';
-import { confirm, select } from '@inquirer/prompts';
+import { select } from '@inquirer/prompts';
 import getConfig from './getConfig';
 
 
@@ -60,14 +60,14 @@ const bump = async (type?: VersionType, force?: boolean): Promise<void> => {
   try {
     config = await getConfig();
 
+    const { message: changesCommittedMessage, isValid: changesCommitted } = await validateChangesCommitted();
+    if (!changesCommitted) {
+      throw new Error(changesCommittedMessage);
+    }
+
     if (!force) {
       if (config.preScript) {
         await performPreScripts(config);
-      }
-      const { message: changesCommittedMessage, isValid: changesCommitted } = await validateChangesCommitted();
-      const continueResponse = await confirm({ message: "There are uncommitted changes. Continue?" });
-      if (!continueResponse) {
-        throw new Error(changesCommittedMessage);
       }
     }
     let branch: string = (await $`git rev-parse --abbrev-ref HEAD`).stdout.trim();

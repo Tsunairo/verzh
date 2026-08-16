@@ -197,8 +197,7 @@ const init = async () => {
       throw new Error(isGitRepositoryMessage);
     }
     const { message: changesCommittedMessage, isValid: changesCommitted } = await validateChangesCommitted();
-    const continueResponse = await confirm({ message: "There are uncommitted changes. Continue?" });
-    if (!continueResponse) {
+    if (!changesCommitted) {
       throw new Error(changesCommittedMessage);
     }
     for (const q of questions) {

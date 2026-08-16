@@ -69,10 +69,7 @@ const set = async (tag: string, force?: boolean, isEnvValidated?: boolean): Prom
       }
       const { message: changesCommittedMessage, isValid: changesCommitted } = await validateChangesCommitted();
       if (!changesCommitted) {
-        const continueResponse = await confirm({ message: "There are uncommitted changes. Continue?" });
-        if (!continueResponse) {
-          throw new Error(changesCommittedMessage);
-        }
+        throw new Error(changesCommittedMessage);
       }
       const validateBranchAndTagResponse = await validateBranchAndTag(branch, tag, config);
       if (!validateBranchAndTagResponse.isValid) {

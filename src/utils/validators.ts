@@ -392,19 +392,20 @@ export const validateRemote = async (remote: string): Promise<ValidationResponse
 };
 
 export const validateChangesCommitted = async (): Promise<ValidationResponse> => {
-  let changesCommitted = false;
   try {
-    // Check for staged and unstaged changes
-    const { stdout: stagedChanges } = await $`git diff --cached --quiet || echo "staged"`;
-    const { stdout: unstagedChanges } = await $`git diff --quiet || echo "unstaged"`;
-    changesCommitted = !(!!stagedChanges || !!unstagedChanges);
-
-  } catch (error) {
-    // Git commands might throw if there are changes
-    changesCommitted = false;
+    const { stdout } = await $`git status --porcelain`;
+    const dirty = stdout.trim();
+    if (dirty) {
+      return {
+        isValid: false,
+        message: `Working tree is not clean. Commit, stash, or remove untracked files before running this command.\n${dirty}`
+      };
+    }
+    return { isValid: true };
+  } catch {
+    return {
+      isValid: false,
+      message: 'Working tree is not clean. Commit, stash, or remove untracked files before running this command.'
+    };
   }
-  if (!changesCommitted) {
-    return { isValid: false, message: 'There are changes that have not been committed. Commit or stash them before running this command.' };
-  }
-  return { isValid: true };
 };
